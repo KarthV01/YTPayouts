@@ -1,0 +1,44 @@
+{
+  "title": "Example sponsorship",
+  "deliverableDescription": "Creator publishes one sponsored YouTube integration.",
+  "deadline": "2026-09-30T00:00:00.000Z",
+  "measurementWindowDays": 30,
+  "totalCapAmount": "3500000000",
+  "participants": {
+    "brand": {
+      "walletAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "handle": "ExampleBrand"
+    },
+    "creator": {
+      "walletAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "handle": "@ExampleCreator"
+    }
+  },
+  "payouts": [
+    {
+      "kind": "base",
+      "label": "Base payout",
+      "amount": "2000000000"
+    },
+    {
+      "kind": "bonus",
+      "label": "100,000 views milestone",
+      "amount": "500000000",
+      "condition": {
+        "metricKey": "youtube.video.views",
+        "operator": "gte",
+        "threshold": "100000"
+      }
+    },
+    {
+      "kind": "bonus",
+      "label": "250,000 views milestone",
+      "amount": "1000000000",
+      "condition": {
+        "metricKey": "youtube.video.views",
+        "operator": "gte",
+        "threshold": "250000"
+      }
+    }
+  ]
+}

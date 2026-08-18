@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Agreement {
+  id                    String              @id @default(cuid())
+  title                 String?
+  deliverableDescription String
+  deadline              DateTime
+  measurementWindowDays Int
+  totalCapAmount        String
+  tokenAddress          String?
+  status                String              @default("draft")
+  termsHash             String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  participants          Participant[]
+  metrics               Metric[]
+  payouts               Payout[]
+  observations          MetricObservation[]
+  blockchainRecord      BlockchainRecord?
+}
+
+model Participant {
+  id            String    @id @default(cuid())
+  agreementId   String
+  role          String
+  walletAddress String
+  handle        String?
+  displayName   String?
+  createdAt     DateTime  @default(now())
+
+  agreement     Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+
+  @@unique([agreementId, role])
+}
+
+model Metric {
+  id           String              @id @default(cuid())
+  agreementId  String
+  key          String
+  label        String?
+  createdAt    DateTime            @default(now())
+
+  agreement    Agreement           @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  conditions   Condition[]
+  observations MetricObservation[]
+
+  @@unique([agreementId, key])
+}
+
+model Condition {
+  id        String  @id @default(cuid())
+  payoutId  String  @unique
+  metricId  String
+  operator  String
+  threshold String
+
+  payout    Payout  @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  metric    Metric  @relation(fields: [metricId], references: [id], onDelete: Restrict)
+}
+
+model Payout {
+  id             String     @id @default(cuid())
+  agreementId    String
+  kind           String
+  label          String
+  amount         String
+  status         String     @default("pending")
+  releasedAt     DateTime?
+  releasedTxHash String?
+  createdAt      DateTime   @default(now())
+
+  agreement      Agreement  @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  condition      Condition?
+}
+
+model MetricObservation {
+  id          String    @id @default(cuid())
+  agreementId String
+  metricId    String
+  value       String
+  source      String
+  observedAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+
+  agreement   Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  metric      Metric    @relation(fields: [metricId], references: [id], onDelete: Restrict)
+}
+
+model BlockchainRecord {
+  id             String    @id @default(cuid())
+  agreementId    String    @unique
+  chainId        Int
+  escrowAddress  String
+  agreementKey   String
+  tokenAddress   String
+  totalCapAmount String
+  termsHash      String
+  createTxHash   String
+  createdAt      DateTime  @default(now())
+
+  agreement      Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+}
