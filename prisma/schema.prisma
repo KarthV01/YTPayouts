@@ -108,3 +108,30 @@ model BlockchainRecord {
 
   agreement      Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
 }
+
+model DemoBrand {
+  id                  String   @id @default(cuid())
+  name                String
+  handle              String   @unique
+  walletAddress       String   @unique
+  industry            String
+  websiteUrl          String?
+  logoUrl             String?
+  monthlyBudgetAmount String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model DemoCreator {
+  id            String   @id @default(cuid())
+  handle        String   @unique
+  displayName   String
+  walletAddress String   @unique
+  channelUrl    String?
+  category      String
+  averageViews  Int
+  audience      String?
+  avatarUrl     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

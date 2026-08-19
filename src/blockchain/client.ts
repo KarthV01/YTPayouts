@@ -8,8 +8,15 @@ import {
   type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { sponsorshipEscrowAbi } from "./abi.js";
 import { agreementKey, payoutKey } from "./ids.js";
+
+const DEFAULT_LOCAL_RPC_URL = "http://127.0.0.1:8545";
+const DEFAULT_LOCAL_CHAIN_ID = 31337;
+const DEFAULT_LOCAL_BACKEND_PRIVATE_KEY =
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as Hex;
 
 export type CreateEscrowInput = {
   agreementId: string;
@@ -134,16 +141,43 @@ export class ViemChainClient implements ChainClient {
 
 export function createChainClientFromEnv(): ChainClient | undefined {
   const { RPC_URL, CHAIN_ID, ESCROW_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS, BACKEND_PRIVATE_KEY } = process.env;
+  const localDeployment = readLocalDeployment();
 
-  if (!RPC_URL || !CHAIN_ID || !ESCROW_CONTRACT_ADDRESS || !USDC_CONTRACT_ADDRESS || !BACKEND_PRIVATE_KEY) {
+  const rpcUrl = RPC_URL ?? localDeployment?.rpcUrl ?? DEFAULT_LOCAL_RPC_URL;
+  const chainId = Number(CHAIN_ID ?? localDeployment?.chainId ?? DEFAULT_LOCAL_CHAIN_ID);
+  const escrowAddress = ESCROW_CONTRACT_ADDRESS || localDeployment?.escrowAddress;
+  const tokenAddress = USDC_CONTRACT_ADDRESS || localDeployment?.tokenAddress;
+  const backendPrivateKey = (BACKEND_PRIVATE_KEY as Hex | undefined) ?? DEFAULT_LOCAL_BACKEND_PRIVATE_KEY;
+
+  if (!escrowAddress || !tokenAddress) {
     return undefined;
   }
 
   return new ViemChainClient({
-    rpcUrl: RPC_URL,
-    chainId: Number(CHAIN_ID),
-    escrowAddress: getAddress(ESCROW_CONTRACT_ADDRESS),
-    defaultTokenAddress: getAddress(USDC_CONTRACT_ADDRESS),
-    backendPrivateKey: BACKEND_PRIVATE_KEY as Hex,
+    rpcUrl,
+    chainId,
+    escrowAddress: getAddress(escrowAddress),
+    defaultTokenAddress: getAddress(tokenAddress),
+    backendPrivateKey,
   });
+}
+
+type LocalDeployment = {
+  rpcUrl?: string;
+  chainId?: number;
+  escrowAddress?: string;
+  tokenAddress?: string;
+};
+
+function readLocalDeployment(): LocalDeployment | undefined {
+  const path = resolve("deployments/local.json");
+  if (!existsSync(path)) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as LocalDeployment;
+  } catch {
+    return undefined;
+  }
 }

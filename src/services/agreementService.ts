@@ -1,0 +1,290 @@
+import type { Prisma, PrismaClient } from "@prisma/client";
+import type { Hex } from "viem";
+import type { ChainClient } from "../blockchain/client.js";
+import { AGREEMENT_STATUS, PARTICIPANT_ROLE, PAYOUT_STATUS } from "../domain/status.js";
+import { buildTermsSnapshot, hashTerms, type AgreementTermsSource } from "../domain/termsHash.js";
+import type { CreateAgreementInput } from "../domain/validation.js";
+import { conflict, notFound, serviceUnavailable } from "../http/errors.js";
+
+export const agreementInclude = {
+  participants: {
+    orderBy: {
+      role: "asc",
+    },
+  },
+  metrics: {
+    orderBy: {
+      key: "asc",
+    },
+  },
+  payouts: {
+    orderBy: {
+      createdAt: "asc",
+    },
+    include: {
+      condition: {
+        include: {
+          metric: true,
+        },
+      },
+    },
+  },
+  observations: {
+    orderBy: {
+      observedAt: "desc",
+    },
+    include: {
+      metric: true,
+    },
+  },
+  blockchainRecord: true,
+} satisfies Prisma.AgreementInclude;
+
+export type AgreementView = Prisma.AgreementGetPayload<{
+  include: typeof agreementInclude;
+}>;
+
+export async function createAgreementFromInput(
+  prisma: PrismaClient,
+  input: CreateAgreementInput,
+): Promise<AgreementView> {
+  const metricKeys = Array.from(
+    new Set(input.payouts.flatMap((payout) => (payout.condition ? [payout.condition.metricKey] : []))),
+  );
+
+  const agreement = await prisma.$transaction(async (tx) => {
+    const created = await tx.agreement.create({
+      data: {
+        title: input.title,
+        deliverableDescription: input.deliverableDescription,
+        deadline: new Date(input.deadline),
+        measurementWindowDays: input.measurementWindowDays,
+        totalCapAmount: input.totalCapAmount,
+        tokenAddress: input.tokenAddress,
+        status: AGREEMENT_STATUS.draft,
+      },
+    });
+
+    await tx.participant.createMany({
+      data: [
+        {
+          agreementId: created.id,
+          role: PARTICIPANT_ROLE.brand,
+          walletAddress: input.participants.brand.walletAddress,
+          handle: input.participants.brand.handle,
+          displayName: input.participants.brand.displayName,
+        },
+        {
+          agreementId: created.id,
+          role: PARTICIPANT_ROLE.creator,
+          walletAddress: input.participants.creator.walletAddress,
+          handle: input.participants.creator.handle,
+          displayName: input.participants.creator.displayName,
+        },
+      ],
+    });
+
+    const metricsByKey = new Map<string, string>();
+    for (const key of metricKeys) {
+      const metric = await tx.metric.create({
+        data: {
+          agreementId: created.id,
+          key,
+        },
+      });
+      metricsByKey.set(key, metric.id);
+    }
+
+    for (const payout of input.payouts) {
+      await tx.payout.create({
+        data: {
+          agreementId: created.id,
+          kind: payout.kind,
+          label: payout.label,
+          amount: payout.amount,
+          status: PAYOUT_STATUS.pending,
+          condition: payout.condition
+            ? {
+                create: {
+                  metricId: metricsByKey.get(payout.condition.metricKey)!,
+                  operator: payout.condition.operator,
+                  threshold: payout.condition.threshold,
+                },
+              }
+            : undefined,
+        },
+      });
+    }
+
+    return created;
+  });
+
+  return getAgreement(prisma, agreement.id);
+}
+
+export async function getAgreement(prisma: PrismaClient, id: string): Promise<AgreementView> {
+  const agreement = await prisma.agreement.findUnique({
+    where: { id },
+    include: agreementInclude,
+  });
+
+  if (!agreement) {
+    throw notFound("Agreement not found");
+  }
+
+  return agreement;
+}
+
+export async function listAgreementsForBrandWallet(
+  prisma: PrismaClient,
+  brandWalletAddress: string,
+): Promise<AgreementView[]> {
+  return prisma.agreement.findMany({
+    where: {
+      participants: {
+        some: {
+          role: PARTICIPANT_ROLE.brand,
+          walletAddress: brandWalletAddress,
+        },
+      },
+    },
+    include: agreementInclude,
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+}
+
+export async function fundAgreementEscrow(
+  prisma: PrismaClient,
+  chain: ChainClient,
+  agreementId: string,
+): Promise<AgreementView> {
+  const agreement = await getAgreement(prisma, agreementId);
+
+  if (agreement.status === AGREEMENT_STATUS.active && agreement.blockchainRecord) {
+    return agreement;
+  }
+
+  if (agreement.status !== AGREEMENT_STATUS.draft && agreement.status !== AGREEMENT_STATUS.acceptedOffchain) {
+    throw conflict(`Agreement cannot be funded from status ${agreement.status}`);
+  }
+
+  const brand = requireParticipant(agreement, PARTICIPANT_ROLE.brand);
+  const creator = requireParticipant(agreement, PARTICIPANT_ROLE.creator);
+  const tokenAddress = agreement.tokenAddress ?? chain.defaultTokenAddress;
+
+  if (!tokenAddress) {
+    throw serviceUnavailable("No token address configured for escrow creation");
+  }
+
+  const termsSource = {
+    ...agreement,
+    tokenAddress,
+  } as AgreementTermsSource;
+  const termsHash = (agreement.termsHash ?? hashTerms(buildTermsSnapshot(termsSource))) as Hex;
+
+  let escrow: Awaited<ReturnType<ChainClient["createEscrow"]>>;
+  try {
+    escrow = await chain.createEscrow({
+      agreementId: agreement.id,
+      brand: brand.walletAddress,
+      creator: creator.walletAddress,
+      token: tokenAddress,
+      totalCapAmount: agreement.totalCapAmount,
+      termsHash,
+    });
+  } catch (error) {
+    throw serviceUnavailable(
+      `Unable to create local escrow. Confirm Anvil is running, contracts are deployed, and the sponsor wallet has approved the escrow contract. ${(error as Error).message}`,
+    );
+  }
+
+  await prisma.$transaction([
+    prisma.blockchainRecord.create({
+      data: {
+        agreementId: agreement.id,
+        chainId: escrow.chainId,
+        escrowAddress: escrow.escrowAddress,
+        agreementKey: escrow.agreementKey,
+        tokenAddress,
+        totalCapAmount: agreement.totalCapAmount,
+        termsHash,
+        createTxHash: escrow.txHash,
+      },
+    }),
+    prisma.agreement.update({
+      where: { id: agreement.id },
+      data: {
+        status: AGREEMENT_STATUS.active,
+        termsHash,
+        tokenAddress,
+      },
+    }),
+  ]);
+
+  return getAgreement(prisma, agreement.id);
+}
+
+export async function releasePayoutAndMark(
+  prisma: PrismaClient,
+  chain: ChainClient,
+  agreementId: string,
+  payoutId: string,
+  amount: string,
+): Promise<string> {
+  const result = await chain.releasePayout({
+    agreementId,
+    payoutId,
+    amount,
+  });
+
+  await markPayoutReleased(prisma, payoutId, result.txHash);
+  return result.txHash;
+}
+
+export async function markPayoutReleased(prisma: PrismaClient, payoutId: string, txHash: string) {
+  await prisma.payout.update({
+    where: { id: payoutId },
+    data: {
+      status: PAYOUT_STATUS.released,
+      releasedAt: new Date(),
+      releasedTxHash: txHash,
+    },
+  });
+}
+
+export async function completeIfCapReached(prisma: PrismaClient, agreementId: string) {
+  const agreement = await prisma.agreement.findUnique({
+    where: { id: agreementId },
+    include: {
+      payouts: true,
+    },
+  });
+
+  if (!agreement) {
+    throw notFound("Agreement not found");
+  }
+
+  const releasedTotal = agreement.payouts
+    .filter((payout) => payout.status === PAYOUT_STATUS.released)
+    .reduce((sum, payout) => sum + BigInt(payout.amount), 0n);
+
+  if (releasedTotal >= BigInt(agreement.totalCapAmount)) {
+    await prisma.agreement.update({
+      where: { id: agreementId },
+      data: {
+        status: AGREEMENT_STATUS.completed,
+      },
+    });
+  }
+}
+
+function requireParticipant(agreement: AgreementView, role: string) {
+  const participant = agreement.participants.find((candidate) => candidate.role === role);
+  if (!participant) {
+    throw notFound(`Agreement is missing ${role} participant`);
+  }
+
+  return participant;
+}

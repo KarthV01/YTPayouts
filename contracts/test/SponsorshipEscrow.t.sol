@@ -64,6 +64,7 @@ contract SponsorshipEscrowTest {
         assertEq(storedTermsHash, termsHash);
         assertTrue(exists);
         assertTrue(active);
+        assertEq(escrow.capAmount(agreementId), cap);
         assertEq(token.balanceOf(address(escrow)), cap);
         assertEq(token.balanceOf(brand), 0);
     }

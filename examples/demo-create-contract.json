@@ -1,0 +1,20 @@
+{
+  "creatorId": "demo_creator_maya",
+  "title": "New crunch challenge",
+  "deliverableDescription": "Creator records one sponsored snack challenge integration.",
+  "deadline": "2026-11-01T00:00:00.000Z",
+  "measurementWindowDays": 30,
+  "basePayoutAmount": "2000000000",
+  "totalCapAmount": "3500000000",
+  "viewMilestones": [
+    {
+      "views": 100000,
+      "bonusAmount": "500000000"
+    },
+    {
+      "views": 250000,
+      "bonusAmount": "1000000000"
+    }
+  ],
+  "metricBonuses": []
+}

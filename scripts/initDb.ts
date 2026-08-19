@@ -8,7 +8,7 @@ function sqlitePathFromDatabaseUrl(url: string): string {
     throw new Error("db:init only supports SQLite DATABASE_URL values starting with file:");
   }
 
-const withoutScheme = url.slice("file:".length).split("?")[0];
+  const withoutScheme = url.slice("file:".length).split("?")[0];
   if (isAbsolute(withoutScheme)) {
     return withoutScheme;
   }
@@ -115,6 +115,39 @@ CREATE TABLE IF NOT EXISTS "BlockchainRecord" (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "BlockchainRecord_agreementId_key" ON "BlockchainRecord"("agreementId");
+
+CREATE TABLE IF NOT EXISTS "DemoBrand" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "name" TEXT NOT NULL,
+  "handle" TEXT NOT NULL,
+  "walletAddress" TEXT NOT NULL,
+  "industry" TEXT NOT NULL,
+  "websiteUrl" TEXT,
+  "logoUrl" TEXT,
+  "monthlyBudgetAmount" TEXT NOT NULL,
+  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "DemoBrand_handle_key" ON "DemoBrand"("handle");
+CREATE UNIQUE INDEX IF NOT EXISTS "DemoBrand_walletAddress_key" ON "DemoBrand"("walletAddress");
+
+CREATE TABLE IF NOT EXISTS "DemoCreator" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "handle" TEXT NOT NULL,
+  "displayName" TEXT NOT NULL,
+  "walletAddress" TEXT NOT NULL,
+  "channelUrl" TEXT,
+  "category" TEXT NOT NULL,
+  "averageViews" INTEGER NOT NULL,
+  "audience" TEXT,
+  "avatarUrl" TEXT,
+  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "DemoCreator_handle_key" ON "DemoCreator"("handle");
+CREATE UNIQUE INDEX IF NOT EXISTS "DemoCreator_walletAddress_key" ON "DemoCreator"("walletAddress");
 `);
 
 db.close();

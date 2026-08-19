@@ -124,4 +124,10 @@ contract SponsorshipEscrow {
         if (!escrow.exists) revert EscrowNotFound();
         return escrow.totalCap - escrow.releasedAmount;
     }
+
+    function capAmount(bytes32 agreementId) external view returns (uint256) {
+        Escrow storage escrow = escrows[agreementId];
+        if (!escrow.exists) revert EscrowNotFound();
+        return escrow.totalCap;
+    }
 }
