@@ -15,7 +15,9 @@
     "contracts:test": "forge test",
     "deploy:local": "tsx scripts/deployLocal.ts",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push"
+    "prisma:push": "prisma db push",
+    "web:dev": "npm --prefix web run dev",
+    "web:build": "npm --prefix web run build"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",

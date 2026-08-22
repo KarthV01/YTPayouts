@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import type { ChainClient } from "./blockchain/client.js";
 import { registerDemoBrandRoutes } from "./routes/demoBrand.js";
+import { registerDemoCreatorRoutes } from "./routes/demoCreator.js";
 import { registerAgreementRoutes } from "./routes/agreements.js";
 import { HttpError } from "./http/errors.js";
 
@@ -48,6 +49,7 @@ export async function buildApp(deps: AppDependencies) {
 
   await app.register(registerAgreementRoutes, deps);
   await app.register(registerDemoBrandRoutes, deps);
+  await app.register(registerDemoCreatorRoutes, deps);
 
   return app;
 }

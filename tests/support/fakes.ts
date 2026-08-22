@@ -282,6 +282,7 @@ export class FakePrisma {
   demoBrand = {
     findUnique: async ({ where }: { where: { id: string } }) =>
       this.demoBrands.find((brand) => brand.id === where.id) ?? null,
+    findMany: async () => [...this.demoBrands].sort((a, b) => a.name.localeCompare(b.name)),
     upsert: async ({ where, update, create }: { where: { id: string }; update: Partial<DemoBrandRow>; create: Partial<DemoBrandRow> }) => {
       const existing = this.demoBrands.find((brand) => brand.id === where.id);
       if (existing) {

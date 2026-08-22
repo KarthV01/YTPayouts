@@ -47,14 +47,35 @@ Start the API:
 npm run dev
 ```
 
+In another terminal, install and start the frontend:
+
+```powershell
+npm install --prefix web
+npm run web:dev
+```
+
+Open `http://localhost:5173`. The entry page lets you continue as the seeded sponsor (Stellar Snacks) or as Maya, Kevin, or Lena. Creating contracts, funding escrow, and releasing payouts still require Anvil plus a local deploy.
+
+## Demo frontend
+
+The UI talks to the demo APIs:
+
+- Sponsor: `/demo/brand/*`
+- Creator: `/demo/creator/:creatorId/*`
+- Account picker: `/demo/profiles`
+
+Delivery approval is a manual operator action. Video content is not checked in this demo. Use **Record performance** on an active contract to submit integer metric values and release bonuses.
+
 ## Demo Brand API
 
-The demo layer is backend-only. It gives a future frontend enough fake data to render a brand dashboard, contract lists, and a contract builder without creating a UI in this repo.
+The demo APIs feed the local frontend. You can still call them with curl:
 
 Dashboard:
 
 ```bash
+curl http://localhost:3000/demo/profiles
 curl http://localhost:3000/demo/brand/dashboard
+curl http://localhost:3000/demo/creator/demo_creator_maya/dashboard
 ```
 
 Contract builder metadata:

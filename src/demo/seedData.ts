@@ -91,7 +91,22 @@ const DEMO_AGREEMENTS: DemoAgreementDefinition[] = [
   },
 ];
 
+const profileSeedInFlight = new WeakMap<PrismaClient, ReturnType<typeof upsertDemoProfiles>>();
+
 export async function ensureDemoProfiles(prisma: PrismaClient) {
+  const existing = profileSeedInFlight.get(prisma);
+  if (existing) {
+    return existing;
+  }
+
+  const work = upsertDemoProfiles(prisma).finally(() => {
+    profileSeedInFlight.delete(prisma);
+  });
+  profileSeedInFlight.set(prisma, work);
+  return work;
+}
+
+async function upsertDemoProfiles(prisma: PrismaClient) {
   const brand = await prisma.demoBrand.upsert({
     where: { id: DEMO_BRAND.id },
     update: {
