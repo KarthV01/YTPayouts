@@ -1,3 +1,5 @@
+import { getAddress } from "viem";
+
 export const DEMO_BRAND_ID = "demo_brand_stellar_snacks";
 
 export const DEMO_BRAND = {
@@ -72,3 +74,45 @@ export const DEMO_TOKEN = {
   symbol: "mUSDC",
   decimals: 6,
 };
+
+type DemoEnv = Record<string, string | undefined>;
+
+const CREATOR_WALLET_OVERRIDE_ENV = {
+  demo_creator_maya: "DEMO_CREATOR_MAYA_WALLET_ADDRESS",
+  demo_creator_kevin: "DEMO_CREATOR_KEVIN_WALLET_ADDRESS",
+  demo_creator_lena: "DEMO_CREATOR_LENA_WALLET_ADDRESS",
+} satisfies Record<string, string>;
+
+export function getDemoBrandSeed(env: DemoEnv = process.env) {
+  return {
+    ...DEMO_BRAND,
+    walletAddress: envAddress(env, "DEMO_BRAND_WALLET_ADDRESS", DEMO_BRAND.walletAddress),
+  };
+}
+
+export function getDemoCreatorSeeds(env: DemoEnv = process.env) {
+  return DEMO_CREATORS.map((creator) => ({
+    ...creator,
+    walletAddress: envAddress(
+      env,
+      CREATOR_WALLET_OVERRIDE_ENV[creator.id as keyof typeof CREATOR_WALLET_OVERRIDE_ENV],
+      creator.walletAddress,
+    ),
+  }));
+}
+
+export function demoTokenForChain(chainId: number | undefined) {
+  if (chainId === 8453 || chainId === 84532) {
+    return {
+      symbol: "USDC",
+      decimals: 6,
+    };
+  }
+
+  return DEMO_TOKEN;
+}
+
+function envAddress(env: DemoEnv, key: string, fallback: string): string {
+  const value = env[key]?.trim();
+  return value ? getAddress(value) : fallback;
+}

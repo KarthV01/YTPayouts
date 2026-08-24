@@ -10,7 +10,7 @@ import {
   type AgreementView,
   agreementInclude,
 } from "../services/agreementService.js";
-import { DEMO_BRAND, DEMO_CREATORS } from "./constants.js";
+import { getDemoBrandSeed, getDemoCreatorSeeds } from "./constants.js";
 
 type DemoAgreementDefinition = {
   title: string;
@@ -107,22 +107,25 @@ export async function ensureDemoProfiles(prisma: PrismaClient) {
 }
 
 async function upsertDemoProfiles(prisma: PrismaClient) {
+  const demoBrand = getDemoBrandSeed();
+  const demoCreators = getDemoCreatorSeeds();
+
   const brand = await prisma.demoBrand.upsert({
-    where: { id: DEMO_BRAND.id },
+    where: { id: demoBrand.id },
     update: {
-      name: DEMO_BRAND.name,
-      handle: DEMO_BRAND.handle,
-      walletAddress: DEMO_BRAND.walletAddress,
-      industry: DEMO_BRAND.industry,
-      websiteUrl: DEMO_BRAND.websiteUrl,
-      logoUrl: DEMO_BRAND.logoUrl,
-      monthlyBudgetAmount: DEMO_BRAND.monthlyBudgetAmount,
+      name: demoBrand.name,
+      handle: demoBrand.handle,
+      walletAddress: demoBrand.walletAddress,
+      industry: demoBrand.industry,
+      websiteUrl: demoBrand.websiteUrl,
+      logoUrl: demoBrand.logoUrl,
+      monthlyBudgetAmount: demoBrand.monthlyBudgetAmount,
     },
-    create: DEMO_BRAND,
+    create: demoBrand,
   });
 
   const creators = [];
-  for (const creator of DEMO_CREATORS) {
+  for (const creator of demoCreators) {
     creators.push(
       await prisma.demoCreator.upsert({
         where: { id: creator.id },

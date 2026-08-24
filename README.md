@@ -2,13 +2,25 @@
 
 Backend + smart-contract MVP for creator sponsorship escrow.
 
-This repo models sponsorships as generic agreements instead of hardcoded YouTube contracts. The backend stores the rich agreement terms and metric/payout logic; the Solidity contract stores a terms hash, escrows the full earning cap in mock USDC, and only lets an authorized backend/operator release payouts.
+This repo models sponsorships as generic agreements instead of hardcoded YouTube contracts. The backend stores the rich agreement terms and metric/payout logic; the Solidity contract stores a terms hash, escrows the full earning cap in ERC-20 USDC-style tokens, and only lets an authorized backend/operator release payouts. Local development uses mock USDC; Base runs use native Circle USDC.
 
 ## Local Stack
 
 - TypeScript, Fastify, Prisma, SQLite
 - Solidity, Foundry, Anvil
 - Mock USDC for local escrow testing
+
+## Base Sepolia/Mainnet
+
+Base deployment uses the same `SponsorshipEscrow` contract with native Circle USDC. Rehearse on Base Sepolia before Base mainnet:
+
+```powershell
+npm run contracts:build
+npm run deploy:base-sepolia
+npm run check:base-sepolia
+```
+
+Mainnet commands are available as `npm run deploy:base-mainnet` and `npm run check:base-mainnet`. Read [docs/base-deployment.md](docs/base-deployment.md) before using real funds.
 
 ## Setup
 

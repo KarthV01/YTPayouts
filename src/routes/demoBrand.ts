@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import type { FastifyInstance } from "fastify";
 import type { ChainClient } from "../blockchain/client.js";
-import { DEMO_METRICS, DEMO_TOKEN } from "../demo/constants.js";
+import { DEMO_METRICS, demoTokenForChain } from "../demo/constants.js";
 import { buildAgreementInputFromDemoContractForm, demoContractFormSchema } from "../demo/contractBuilder.js";
 import { getDemoBrand, listDemoBrands, listDemoCreators, requireChain } from "../demo/lookups.js";
 import { enrichAgreement, summarizeAgreement, buildDashboardTotals } from "../demo/presenters.js";
@@ -48,7 +48,7 @@ export async function registerDemoBrandRoutes(app: FastifyInstance, deps: RouteD
       creators,
       metrics: DEMO_METRICS,
       token: {
-        ...DEMO_TOKEN,
+        ...demoTokenForChain(deps.chain?.chainId),
         address: deps.chain?.defaultTokenAddress ?? null,
       },
       defaults: {
@@ -78,7 +78,7 @@ export async function registerDemoBrandRoutes(app: FastifyInstance, deps: RouteD
   app.post("/demo/brand/contracts", async (request, reply) => {
     const chain = requireChain(deps.chain);
     if (!chain.defaultTokenAddress) {
-      throw serviceUnavailable("No mock USDC token address is configured");
+      throw serviceUnavailable("No USDC token address is configured");
     }
 
     const input = demoContractFormSchema.parse(request.body);

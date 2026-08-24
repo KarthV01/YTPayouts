@@ -51,7 +51,7 @@ export async function listDemoCreators(prisma: PrismaClient): Promise<DemoCreato
 export function requireChain(chain: ChainClient | undefined): ChainClient {
   if (!chain) {
     throw serviceUnavailable(
-      "Blockchain client is not configured. Run Anvil, deploy local contracts, then set .env or keep deployments/local.json.",
+      "Blockchain client is not configured. For local runs, start Anvil and deploy local contracts. For Base runs, set explicit RPC, chain, escrow, USDC, and backend key env vars.",
     );
   }
 

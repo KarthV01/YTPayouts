@@ -12,11 +12,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { sponsorshipEscrowAbi } from "./abi.js";
 import { agreementKey, payoutKey } from "./ids.js";
-
-const DEFAULT_LOCAL_RPC_URL = "http://127.0.0.1:8545";
-const DEFAULT_LOCAL_CHAIN_ID = 31337;
-const DEFAULT_LOCAL_BACKEND_PRIVATE_KEY =
-  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as Hex;
+import {
+  DEFAULT_LOCAL_BACKEND_PRIVATE_KEY,
+  DEFAULT_LOCAL_RPC_URL,
+  LOCAL_CHAIN_ID,
+  chainNameForId,
+  isDefaultLocalPrivateKey,
+} from "./networks.js";
 
 export type CreateEscrowInput = {
   agreementId: string;
@@ -73,7 +75,7 @@ export class ViemChainClient implements ChainClient {
   constructor(config: ChainClientConfig) {
     const chain = defineChain({
       id: config.chainId,
-      name: "Local Sponsorship Chain",
+      name: chainNameForId(config.chainId),
       nativeCurrency: {
         decimals: 18,
         name: "Ether",
@@ -140,34 +142,68 @@ export class ViemChainClient implements ChainClient {
 }
 
 export function createChainClientFromEnv(): ChainClient | undefined {
-  const { RPC_URL, CHAIN_ID, ESCROW_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS, BACKEND_PRIVATE_KEY } = process.env;
-  const localDeployment = readLocalDeployment();
+  const config = resolveChainClientConfig(process.env, readLocalDeployment());
+  if (!config) return undefined;
 
-  const rpcUrl = RPC_URL ?? localDeployment?.rpcUrl ?? DEFAULT_LOCAL_RPC_URL;
-  const chainId = Number(CHAIN_ID ?? localDeployment?.chainId ?? DEFAULT_LOCAL_CHAIN_ID);
-  const escrowAddress = ESCROW_CONTRACT_ADDRESS || localDeployment?.escrowAddress;
-  const tokenAddress = USDC_CONTRACT_ADDRESS || localDeployment?.tokenAddress;
-  const backendPrivateKey = (BACKEND_PRIVATE_KEY as Hex | undefined) ?? DEFAULT_LOCAL_BACKEND_PRIVATE_KEY;
-
-  if (!escrowAddress || !tokenAddress) {
-    return undefined;
-  }
-
-  return new ViemChainClient({
-    rpcUrl,
-    chainId,
-    escrowAddress: getAddress(escrowAddress),
-    defaultTokenAddress: getAddress(tokenAddress),
-    backendPrivateKey,
-  });
+  return new ViemChainClient(config);
 }
 
-type LocalDeployment = {
+export type ChainEnv = Record<string, string | undefined>;
+
+export type LocalDeployment = {
   rpcUrl?: string;
   chainId?: number;
   escrowAddress?: string;
   tokenAddress?: string;
 };
+
+export function resolveChainClientConfig(
+  env: ChainEnv,
+  localDeployment?: LocalDeployment,
+): ChainClientConfig | undefined {
+  const explicitChainId = envValue(env, "CHAIN_ID");
+  const chainId = parseChainId(explicitChainId ?? localDeployment?.chainId?.toString() ?? LOCAL_CHAIN_ID.toString());
+
+  if (chainId !== LOCAL_CHAIN_ID) {
+    const missing = ["RPC_URL", "CHAIN_ID", "ESCROW_CONTRACT_ADDRESS", "USDC_CONTRACT_ADDRESS", "BACKEND_PRIVATE_KEY"].filter(
+      (key) => !envValue(env, key),
+    );
+
+    if (missing.length > 0) {
+      throw new Error(
+        `Non-local chain configuration for chain ID ${chainId} requires explicit ${missing.join(", ")}.`,
+      );
+    }
+
+    const backendPrivateKey = envValue(env, "BACKEND_PRIVATE_KEY") as Hex;
+    if (isDefaultLocalPrivateKey(backendPrivateKey)) {
+      throw new Error("Refusing to use the default Anvil private key outside the local chain.");
+    }
+
+    return {
+      rpcUrl: envValue(env, "RPC_URL")!,
+      chainId,
+      escrowAddress: getAddress(envValue(env, "ESCROW_CONTRACT_ADDRESS")!),
+      defaultTokenAddress: getAddress(envValue(env, "USDC_CONTRACT_ADDRESS")!),
+      backendPrivateKey,
+    };
+  }
+
+  const escrowAddress = envValue(env, "ESCROW_CONTRACT_ADDRESS") ?? localDeployment?.escrowAddress;
+  const tokenAddress = envValue(env, "USDC_CONTRACT_ADDRESS") ?? localDeployment?.tokenAddress;
+
+  if (!escrowAddress || !tokenAddress) {
+    return undefined;
+  }
+
+  return {
+    rpcUrl: envValue(env, "RPC_URL") ?? localDeployment?.rpcUrl ?? DEFAULT_LOCAL_RPC_URL,
+    chainId,
+    escrowAddress: getAddress(escrowAddress),
+    defaultTokenAddress: getAddress(tokenAddress),
+    backendPrivateKey: (envValue(env, "BACKEND_PRIVATE_KEY") as Hex | undefined) ?? DEFAULT_LOCAL_BACKEND_PRIVATE_KEY,
+  };
+}
 
 function readLocalDeployment(): LocalDeployment | undefined {
   const path = resolve("deployments/local.json");
@@ -180,4 +216,18 @@ function readLocalDeployment(): LocalDeployment | undefined {
   } catch {
     return undefined;
   }
+}
+
+function parseChainId(value: string): number {
+  const chainId = Number(value);
+  if (!Number.isInteger(chainId) || chainId <= 0) {
+    throw new Error("CHAIN_ID must be a positive integer.");
+  }
+
+  return chainId;
+}
+
+function envValue(env: ChainEnv, key: string): string | undefined {
+  const value = env[key]?.trim();
+  return value ? value : undefined;
 }
