@@ -7,7 +7,7 @@ export function CreatorsPage() {
   const { data, error, loading } = useResource("contract-builder", () => api.contractBuilder());
 
   if (loading) {
-    return <p className="text-sm text-muted">Loading creators…</p>;
+    return <p className="text-sm text-muted">Loading creators...</p>;
   }
 
   if (error || !data) {
@@ -41,7 +41,7 @@ export function CreatorsPage() {
                   <div className="text-xs text-muted">{creator.handle}</div>
                 </td>
                 <td className="px-4 py-3 text-muted">{creator.category}</td>
-                <td className="px-4 py-3 text-muted">{creator.audience ?? "—"}</td>
+                <td className="px-4 py-3 text-muted">{creator.audience ?? "-"}</td>
                 <td className="px-4 py-3 tabular-nums">{formatNumber(creator.averageViews)}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted">{truncateAddress(creator.walletAddress)}</td>
                 <td className="px-4 py-3 text-right">

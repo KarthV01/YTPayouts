@@ -1,6 +1,6 @@
 export function formatUsdc(amount: string | number | null | undefined): string {
   if (amount === null || amount === undefined || amount === "") {
-    return "—";
+    return "-";
   }
 
   const units = BigInt(amount);

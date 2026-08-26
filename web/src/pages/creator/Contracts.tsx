@@ -5,7 +5,7 @@ import { useResource } from "../../lib/useResource";
 import { ContractTable } from "../../ui/ContractTable";
 import { Banner, PageHeader, Select } from "../../ui/primitives";
 
-export function CreatorDealsPage() {
+export function CreatorContractsPage() {
   const { creatorId = "" } = useParams();
   const { data, error, loading } = useResource(`creator-contracts-${creatorId}`, () =>
     api.creatorContracts(creatorId),
@@ -23,16 +23,16 @@ export function CreatorDealsPage() {
   }, [data, status]);
 
   if (loading) {
-    return <p className="text-sm text-muted">Loading deals…</p>;
+    return <p className="text-sm text-muted">Loading contracts...</p>;
   }
 
   if (error || !data) {
-    return <Banner>{error ?? "Unable to load deals."}</Banner>;
+    return <Banner>{error ?? "Unable to load contracts."}</Banner>;
   }
 
   return (
     <div>
-      <PageHeader title="Deals" description="Sponsorships assigned to this creator." />
+      <PageHeader title="Contracts" description="Sponsorship contracts assigned to this creator." />
       <div className="mb-4 max-w-[200px]">
         <Select value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="all">All statuses</option>
@@ -44,7 +44,7 @@ export function CreatorDealsPage() {
       <ContractTable
         contracts={contracts}
         counterparty="sponsor"
-        hrefFor={(contract) => `/creator/${creatorId}/deals/${contract.id}`}
+        hrefFor={(contract) => `/creator/${creatorId}/contracts/${contract.id}`}
       />
     </div>
   );

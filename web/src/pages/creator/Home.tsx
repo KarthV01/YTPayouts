@@ -12,7 +12,7 @@ export function CreatorHomePage() {
   );
 
   if (loading) {
-    return <p className="text-sm text-muted">Loading dashboard…</p>;
+    return <p className="text-sm text-muted">Loading dashboard...</p>;
   }
 
   if (error || !data) {
@@ -22,25 +22,35 @@ export function CreatorHomePage() {
   const upcoming = [...data.contracts]
     .filter((contract) => contract.status !== "completed")
     .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+  const active = data.contracts.filter((contract) => contract.status === "active");
 
   return (
     <div>
-      <PageHeader title="Home" description="Deals and payouts for this creator wallet." />
+      <PageHeader title="Home" description="Current contracts, deadlines, and payouts for this creator wallet." />
       <KpiRow
         items={[
           { label: "Earned", value: data.totals.releasedPayoutAmount, money: true },
           { label: "Pending", value: data.totals.pendingPayoutAmount, money: true },
-          { label: "Active deals", value: String(data.totals.byStatus.active ?? 0) },
-          { label: "All deals", value: String(data.totals.totalContracts) },
+          { label: "Active contracts", value: String(data.totals.byStatus.active ?? 0) },
+          { label: "Completed", value: String(data.totals.byStatus.completed ?? 0) },
         ]}
       />
+      <div className="mt-8">
+        <h2 className="mb-3 text-sm font-medium text-ink">Current contracts</h2>
+        <ContractTable
+          contracts={active}
+          counterparty="sponsor"
+          emptyLabel="No active contracts."
+          hrefFor={(contract) => `/creator/${creatorId}/contracts/${contract.id}`}
+        />
+      </div>
       <div className="mt-8">
         <h2 className="mb-3 text-sm font-medium text-ink">Upcoming deadlines</h2>
         <ContractTable
           contracts={upcoming}
           counterparty="sponsor"
-          emptyLabel="No upcoming deals."
-          hrefFor={(contract) => `/creator/${creatorId}/deals/${contract.id}`}
+          emptyLabel="No upcoming contracts."
+          hrefFor={(contract) => `/creator/${creatorId}/contracts/${contract.id}`}
         />
       </div>
     </div>

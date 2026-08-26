@@ -8,7 +8,7 @@ export function SponsorHomePage() {
   const { data, error, loading } = useResource("brand-dashboard", () => api.brandDashboard());
 
   if (loading) {
-    return <p className="text-sm text-muted">Loading dashboard…</p>;
+    return <p className="text-sm text-muted">Loading dashboard...</p>;
   }
 
   if (error || !data) {
@@ -33,7 +33,7 @@ export function SponsorHomePage() {
         ]}
       />
       <p className="mt-3 text-sm text-muted">
-        {totals.byStatus.draft ?? 0} draft · {totals.byStatus.active ?? 0} active · {totals.byStatus.completed ?? 0}{" "}
+        {totals.byStatus.draft ?? 0} draft / {totals.byStatus.active ?? 0} active / {totals.byStatus.completed ?? 0}{" "}
         completed
       </p>
       <div className="mt-8">

@@ -20,6 +20,7 @@ export function SponsorLayout() {
     <AppShell
       accountLabel={brand?.name ?? "Sponsor"}
       accountMeta={brand ? truncateAddress(brand.walletAddress) : undefined}
+      currentSession={{ role: "sponsor", id: brand?.id ?? "demo_brand_stellar_snacks" }}
       nav={[
         { to: "/sponsor", label: "Home" },
         { to: "/sponsor/contracts", label: "Contracts" },

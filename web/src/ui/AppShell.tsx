@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
+import type { Session } from "../lib/session";
+import { AccountSwitcher } from "./AccountSwitcher";
 
 export type NavItem = {
   to: string;
@@ -10,11 +12,13 @@ export function AppShell({
   nav,
   accountLabel,
   accountMeta,
+  currentSession,
   children,
 }: {
   nav: NavItem[];
   accountLabel: string;
   accountMeta?: string;
+  currentSession: Session;
   children: ReactNode;
 }) {
   return (
@@ -46,7 +50,7 @@ export function AppShell({
             <div className="truncate text-sm font-semibold text-ink">{accountLabel}</div>
             {accountMeta ? <div className="truncate font-mono text-[11px] text-muted">{accountMeta}</div> : null}
           </div>
-          <div className="text-xs font-medium text-muted">Demo workspace</div>
+          <AccountSwitcher currentSession={currentSession} />
         </header>
         <main className="flex-1 px-8 py-8">{children}</main>
       </div>

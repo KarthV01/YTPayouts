@@ -19,7 +19,7 @@ export function SponsorContractsPage() {
   }, [data, status]);
 
   if (loading) {
-    return <p className="text-sm text-muted">Loading contracts…</p>;
+    return <p className="text-sm text-muted">Loading contracts...</p>;
   }
 
   if (error || !data) {

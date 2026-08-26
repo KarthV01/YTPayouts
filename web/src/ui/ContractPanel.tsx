@@ -40,7 +40,9 @@ export function ContractPanel({
         <section className="rounded-[8px] border-2 border-ink/20 bg-surface p-5">
           <h2 className="text-sm font-medium text-ink">Actions</h2>
           <p className="mt-1 text-sm text-muted">
-            Delivery approval is an operator check. Video content is not verified in this demo.
+            {variant === "sponsor"
+              ? "Delivery approval is an operator check. Video content is not verified in this demo."
+              : "Submit observed performance metrics for this active contract. File uploads are handled separately."}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {canFund ? (
@@ -102,7 +104,7 @@ export function ContractPanel({
                 </td>
                 <td className="px-4 py-3 text-muted">
                   {payout.condition
-                    ? `${payout.condition.metric.key} ≥ ${formatNumber(payout.condition.threshold)}`
+                    ? `${payout.condition.metric.key} >= ${formatNumber(payout.condition.threshold)}`
                     : "On delivery approval"}
                 </td>
                 <td className="px-4 py-3 tabular-nums">{formatUsdc(payout.amount)}</td>

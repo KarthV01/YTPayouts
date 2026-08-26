@@ -20,9 +20,10 @@ export function CreatorLayout() {
     <AppShell
       accountLabel={creator?.displayName ?? "Creator"}
       accountMeta={creator?.handle}
+      currentSession={{ role: "creator", id: creatorId }}
       nav={[
         { to: `/creator/${creatorId}`, label: "Home" },
-        { to: `/creator/${creatorId}/deals`, label: "Deals" },
+        { to: `/creator/${creatorId}/contracts`, label: "Contracts" },
         { to: `/creator/${creatorId}/earnings`, label: "Earnings" },
       ]}
     >

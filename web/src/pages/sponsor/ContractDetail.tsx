@@ -42,7 +42,7 @@ export function SponsorContractDetailPage() {
   }
 
   if (loading && !view) {
-    return <p className="text-sm text-muted">Loading contract…</p>;
+    return <p className="text-sm text-muted">Loading contract...</p>;
   }
 
   if ((error && !view) || !view) {
