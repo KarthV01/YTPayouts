@@ -4,13 +4,15 @@ import {
   defineChain,
   getAddress,
   http,
+  maxUint256,
+  parseEther,
   type Address,
   type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { sponsorshipEscrowAbi } from "./abi.js";
+import { mockUsdcAbi, sponsorshipEscrowAbi } from "./abi.js";
 import { agreementKey, payoutKey } from "./ids.js";
 import {
   DEFAULT_LOCAL_BACKEND_PRIVATE_KEY,
@@ -35,6 +37,12 @@ export type ReleasePayoutInput = {
   amount: string;
 };
 
+export type PrepareLocalSponsorWalletInput = {
+  walletAddress: string;
+  privateKey: Hex;
+  minimumTokenAmount: string;
+};
+
 export type ChainWriteResult = {
   txHash: Hex;
 };
@@ -49,6 +57,7 @@ export interface ChainClient {
   chainId: number;
   escrowAddress: Address;
   defaultTokenAddress?: Address;
+  prepareLocalSponsorWallet?(input: PrepareLocalSponsorWalletInput): Promise<void>;
   createEscrow(input: CreateEscrowInput): Promise<CreateEscrowResult>;
   releasePayout(input: ReleasePayoutInput): Promise<ChainWriteResult>;
 }
@@ -70,7 +79,10 @@ export class ViemChainClient implements ChainClient {
   // viem's dynamic-chain generics are stricter than this local-dev wrapper needs.
   private readonly walletClient: ReturnType<typeof createWalletClient> & {
     writeContract(args: unknown): Promise<Hex>;
+    sendTransaction(args: unknown): Promise<Hex>;
   };
+  private readonly chain: ReturnType<typeof defineChain>;
+  private readonly rpcUrl: string;
 
   constructor(config: ChainClientConfig) {
     const chain = defineChain({
@@ -92,6 +104,8 @@ export class ViemChainClient implements ChainClient {
     this.chainId = config.chainId;
     this.escrowAddress = getAddress(config.escrowAddress);
     this.defaultTokenAddress = config.defaultTokenAddress ? getAddress(config.defaultTokenAddress) : undefined;
+    this.chain = chain;
+    this.rpcUrl = config.rpcUrl;
     this.publicClient = createPublicClient({
       chain,
       transport: http(config.rpcUrl),
@@ -101,6 +115,53 @@ export class ViemChainClient implements ChainClient {
       chain,
       transport: http(config.rpcUrl),
     }) as typeof this.walletClient;
+  }
+
+  async prepareLocalSponsorWallet(input: PrepareLocalSponsorWalletInput): Promise<void> {
+    if (this.chainId !== LOCAL_CHAIN_ID) {
+      throw new Error("Generated sponsor wallet provisioning is only allowed on local Anvil.");
+    }
+
+    if (!this.defaultTokenAddress) {
+      throw new Error("No local token address is configured.");
+    }
+
+    const sponsor = privateKeyToAccount(input.privateKey);
+    const sponsorAddress = getAddress(input.walletAddress);
+    if (sponsor.address.toLowerCase() !== sponsorAddress.toLowerCase()) {
+      throw new Error("Generated sponsor wallet private key does not match its address.");
+    }
+
+    const sponsorBalance = await this.publicClient.getBalance({ address: sponsorAddress });
+    if (sponsorBalance < parseEther("0.05")) {
+      const gasHash = await this.walletClient.sendTransaction({
+        to: sponsorAddress,
+        value: parseEther("1"),
+      });
+      await this.publicClient.waitForTransactionReceipt({ hash: gasHash });
+    }
+
+    const mintHash = await this.walletClient.writeContract({
+      address: this.defaultTokenAddress,
+      abi: mockUsdcAbi,
+      functionName: "mint",
+      args: [sponsorAddress, BigInt(input.minimumTokenAmount)],
+    });
+    await this.publicClient.waitForTransactionReceipt({ hash: mintHash });
+
+    const sponsorClient = createWalletClient({
+      account: sponsor,
+      chain: this.chain,
+      transport: http(this.rpcUrl),
+    }) as typeof this.walletClient;
+
+    const approveHash = await sponsorClient.writeContract({
+      address: this.defaultTokenAddress,
+      abi: mockUsdcAbi,
+      functionName: "approve",
+      args: [this.escrowAddress, maxUint256],
+    });
+    await this.publicClient.waitForTransactionReceipt({ hash: approveHash });
   }
 
   async createEscrow(input: CreateEscrowInput): Promise<CreateEscrowResult> {

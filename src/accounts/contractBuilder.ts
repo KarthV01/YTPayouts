@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { CreatorProfile, SponsorProfile } from "@prisma/client";
 import { CONDITION_OPERATOR, PAYOUT_KIND } from "../domain/status.js";
 import { createAgreementSchema, type CreateAgreementInput } from "../domain/validation.js";
 
@@ -25,8 +26,8 @@ const metricBonusSchema = z.object({
   bonusAmount: positiveIntegerValue.transform(toIntegerString),
 });
 
-export const demoContractFormSchema = z.object({
-  creatorId: z.string().min(1),
+export const contractInviteFormSchema = z.object({
+  creatorProfileId: z.string().min(1),
   title: z.string().min(1),
   deliverableDescription: z.string().min(1),
   deadline: z.string().datetime(),
@@ -37,24 +38,12 @@ export const demoContractFormSchema = z.object({
   metricBonuses: z.array(metricBonusSchema).default([]),
 });
 
-export type DemoContractFormInput = z.infer<typeof demoContractFormSchema>;
+export type ContractInviteFormInput = z.infer<typeof contractInviteFormSchema>;
 
-type DemoBrandLike = {
-  walletAddress: string;
-  handle: string;
-  name: string;
-};
-
-type DemoCreatorLike = {
-  walletAddress: string;
-  handle: string;
-  displayName: string;
-};
-
-export function buildAgreementInputFromDemoContractForm(
-  input: DemoContractFormInput,
-  brand: DemoBrandLike,
-  creator: DemoCreatorLike,
+export function buildAgreementInputFromContractInvite(
+  input: ContractInviteFormInput,
+  sponsor: SponsorProfile,
+  creator: CreatorProfile,
   tokenAddress?: string,
 ): CreateAgreementInput {
   return createAgreementSchema.parse({
@@ -66,9 +55,9 @@ export function buildAgreementInputFromDemoContractForm(
     tokenAddress,
     participants: {
       brand: {
-        walletAddress: brand.walletAddress,
-        handle: brand.handle,
-        displayName: brand.name,
+        walletAddress: sponsor.walletAddress,
+        handle: sponsor.handle,
+        displayName: sponsor.name,
       },
       creator: {
         walletAddress: creator.walletAddress,

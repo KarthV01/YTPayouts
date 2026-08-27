@@ -10,7 +10,6 @@
     "test": "vitest run",
     "anvil": "anvil",
     "db:init": "tsx scripts/initDb.ts",
-    "seed:demo": "tsx scripts/seedDemo.ts",
     "contracts:build": "forge build",
     "contracts:test": "forge test",
     "deploy:local": "tsx scripts/deployLocal.ts",

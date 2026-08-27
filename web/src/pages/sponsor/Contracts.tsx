@@ -1,11 +1,15 @@
 import { useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import { api } from "../../lib/api";
 import { useResource } from "../../lib/useResource";
 import { ContractTable } from "../../ui/ContractTable";
 import { Banner, ButtonLink, PageHeader, Select } from "../../ui/primitives";
 
 export function SponsorContractsPage() {
-  const { data, error, loading } = useResource("brand-contracts", () => api.brandContracts());
+  const { sponsorId = "" } = useParams();
+  const { data, error, loading } = useResource(`brand-contracts-${sponsorId}`, () =>
+    api.brandContracts(sponsorId),
+  );
   const [status, setStatus] = useState("all");
 
   const contracts = useMemo(() => {
@@ -31,7 +35,7 @@ export function SponsorContractsPage() {
       <PageHeader
         title="Contracts"
         description="All sponsorship agreements for this sponsor."
-        action={<ButtonLink to="/sponsor/contracts/new">New contract</ButtonLink>}
+        action={<ButtonLink to={`/sponsor/${sponsorId}/contracts/new`}>New contract</ButtonLink>}
       />
       <div className="mb-4 max-w-[200px]">
         <Select value={status} onChange={(event) => setStatus(event.target.value)}>
@@ -44,7 +48,7 @@ export function SponsorContractsPage() {
       <ContractTable
         contracts={contracts}
         counterparty="creator"
-        hrefFor={(contract) => `/sponsor/contracts/${contract.id}`}
+        hrefFor={(contract) => `/sponsor/${sponsorId}/contracts/${contract.id}`}
       />
     </div>
   );

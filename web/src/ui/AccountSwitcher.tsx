@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { truncateAddress } from "../lib/format";
-import { writeSession, type Session } from "../lib/session";
-import type { DemoProfiles } from "../lib/types";
+import { clearSession, writeSession, type Session } from "../lib/session";
+import type { ProfilesResponse } from "../lib/types";
 import { useResource } from "../lib/useResource";
+import { Button } from "./primitives";
 
 export type AccountTarget = Session & {
   label: string;
@@ -45,6 +46,12 @@ export function AccountSwitcher({ currentSession }: { currentSession: Session })
     };
   }, [open]);
 
+  async function signOut() {
+    await api.logout();
+    clearSession();
+    navigate("/");
+  }
+
   return (
     <div ref={wrapperRef} className="relative">
       <button
@@ -58,18 +65,37 @@ export function AccountSwitcher({ currentSession }: { currentSession: Session })
       </button>
       {open ? (
         <div className="absolute right-0 top-11 z-50 w-[320px] rounded-[8px] border-2 border-ink/20 bg-surface p-3 shadow-[0_12px_30px_rgba(18,16,12,0.18)]">
+          {data?.user ? (
+            <div className="mb-3 border-b border-rule px-2 pb-3 text-sm">
+              <div className="font-medium text-ink">{data.user.name ?? data.user.email}</div>
+              <div className="truncate text-xs text-muted">{data.user.email}</div>
+            </div>
+          ) : null}
           {loading ? <p className="px-2 py-3 text-sm text-muted">Loading accounts...</p> : null}
           {error ? <p className="px-2 py-3 text-sm text-muted">{error}</p> : null}
           {data ? (
-            <AccountGroups
-              profiles={data}
-              currentSession={currentSession}
-              compact
-              onSelect={(target) => {
-                selectAccount(target, navigate);
-                setOpen(false);
-              }}
-            />
+            <>
+              <AccountGroups
+                profiles={data}
+                currentSession={currentSession}
+                compact
+                onSelect={(target) => {
+                  selectAccount(target, navigate);
+                  setOpen(false);
+                }}
+              />
+              <div className="mt-3 grid gap-2 border-t border-rule pt-3">
+                <Button type="button" variant="secondary" onClick={() => navigate("/")}>
+                  Add profile
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => (window.location.href = "/api/auth/google/start")}>
+                  Switch Google account
+                </Button>
+                <Button type="button" variant="ghost" onClick={signOut}>
+                  Sign out
+                </Button>
+              </div>
+            </>
           ) : null}
         </div>
       ) : null}
@@ -83,7 +109,7 @@ export function AccountGroups({
   compact = false,
   onSelect,
 }: {
-  profiles: DemoProfiles;
+  profiles: ProfilesResponse;
   currentSession?: Session | null;
   compact?: boolean;
   onSelect: (target: AccountTarget) => void;
@@ -113,7 +139,7 @@ export function AccountGroups({
 
 export function selectAccount(target: AccountTarget, navigate: ReturnType<typeof useNavigate>) {
   writeSession({ role: target.role, id: target.id });
-  navigate(target.role === "sponsor" ? "/sponsor" : `/creator/${target.id}`);
+  navigate(target.role === "sponsor" ? `/sponsor/${target.id}` : `/creator/${target.id}`);
 }
 
 function AccountGroup({
@@ -133,6 +159,7 @@ function AccountGroup({
     <section className={compact ? "" : "text-center"}>
       <h2 className="mb-2 text-sm font-semibold text-ink">{title}:</h2>
       <div className={compact ? "space-y-1" : "space-y-2"}>
+        {targets.length === 0 ? <p className="px-2 py-2 text-sm text-muted">No accounts yet.</p> : null}
         {targets.map((target) => {
           const active = currentSession ? isCurrent(target, currentSession) : false;
           return (
@@ -160,7 +187,7 @@ function AccountGroup({
   );
 }
 
-function sponsorTargets(profiles: DemoProfiles): AccountTarget[] {
+function sponsorTargets(profiles: ProfilesResponse): AccountTarget[] {
   return profiles.sponsors.map((sponsor) => ({
     role: "sponsor",
     id: sponsor.id,
@@ -170,7 +197,7 @@ function sponsorTargets(profiles: DemoProfiles): AccountTarget[] {
   }));
 }
 
-function creatorTargets(profiles: DemoProfiles): AccountTarget[] {
+function creatorTargets(profiles: ProfilesResponse): AccountTarget[] {
   return profiles.creators.map((creator) => ({
     role: "creator",
     id: creator.id,
@@ -180,7 +207,7 @@ function creatorTargets(profiles: DemoProfiles): AccountTarget[] {
   }));
 }
 
-function allTargets(profiles: DemoProfiles): AccountTarget[] {
+function allTargets(profiles: ProfilesResponse): AccountTarget[] {
   return [...sponsorTargets(profiles), ...creatorTargets(profiles)];
 }
 

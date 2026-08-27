@@ -1,5 +1,10 @@
 import type { PrismaClient } from "@prisma/client";
-import type { ChainClient, CreateEscrowInput, ReleasePayoutInput } from "../../src/blockchain/client.js";
+import type {
+  ChainClient,
+  CreateEscrowInput,
+  PrepareLocalSponsorWalletInput,
+  ReleasePayoutInput,
+} from "../../src/blockchain/client.js";
 
 export class FakeChainClient implements ChainClient {
   chainId = 31337;
@@ -7,6 +12,11 @@ export class FakeChainClient implements ChainClient {
   defaultTokenAddress = "0x4444444444444444444444444444444444444444" as const;
   createdEscrows: CreateEscrowInput[] = [];
   releasedPayouts: ReleasePayoutInput[] = [];
+  preparedSponsorWallets: PrepareLocalSponsorWalletInput[] = [];
+
+  async prepareLocalSponsorWallet(input: PrepareLocalSponsorWalletInput) {
+    this.preparedSponsorWallets.push(input);
+  }
 
   async createEscrow(input: CreateEscrowInput) {
     this.createdEscrows.push(input);
@@ -101,8 +111,27 @@ type BlockchainRecordRow = {
   createdAt: Date;
 };
 
-type DemoBrandRow = {
+type UserRow = {
   id: string;
+  email: string;
+  googleSub: string | null;
+  name: string | null;
+  avatarUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type AuthSessionRow = {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  createdAt: Date;
+};
+
+type SponsorProfileRow = {
+  id: string;
+  userId: string;
   name: string;
   handle: string;
   walletAddress: string;
@@ -114,8 +143,9 @@ type DemoBrandRow = {
   updatedAt: Date;
 };
 
-type DemoCreatorRow = {
+type CreatorProfileRow = {
   id: string;
+  userId: string;
   handle: string;
   displayName: string;
   walletAddress: string;
@@ -124,6 +154,27 @@ type DemoCreatorRow = {
   averageViews: number;
   audience: string | null;
   avatarUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type ProfileWalletRow = {
+  id: string;
+  profileType: string;
+  profileId: string;
+  walletAddress: string;
+  privateKey: string;
+  provisionedAt: Date | null;
+  createdAt: Date;
+};
+
+type ContractInviteRow = {
+  id: string;
+  sponsorProfileId: string;
+  creatorProfileId: string;
+  agreementId: string;
+  status: string;
+  acceptedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -137,8 +188,12 @@ export class FakePrisma {
   private payouts: PayoutRow[] = [];
   private observations: ObservationRow[] = [];
   private blockchainRecords: BlockchainRecordRow[] = [];
-  private demoBrands: DemoBrandRow[] = [];
-  private demoCreators: DemoCreatorRow[] = [];
+  private users: UserRow[] = [];
+  private authSessions: AuthSessionRow[] = [];
+  private sponsorProfiles: SponsorProfileRow[] = [];
+  private creatorProfiles: CreatorProfileRow[] = [];
+  private profileWallets: ProfileWalletRow[] = [];
+  private contractInvites: ContractInviteRow[] = [];
 
   agreement = {
     create: async ({ data }: { data: Partial<AgreementRow> }) => {
@@ -279,63 +334,224 @@ export class FakePrisma {
     },
   };
 
-  demoBrand = {
-    findUnique: async ({ where }: { where: { id: string } }) =>
-      this.demoBrands.find((brand) => brand.id === where.id) ?? null,
-    findMany: async () => [...this.demoBrands].sort((a, b) => a.name.localeCompare(b.name)),
-    upsert: async ({ where, update, create }: { where: { id: string }; update: Partial<DemoBrandRow>; create: Partial<DemoBrandRow> }) => {
-      const existing = this.demoBrands.find((brand) => brand.id === where.id);
-      if (existing) {
-        Object.assign(existing, update, { updatedAt: new Date() });
-        return existing;
-      }
-
+  user = {
+    findUnique: async ({ where }: { where: Partial<Pick<UserRow, "id" | "email" | "googleSub">> }) =>
+      this.users.find(
+        (user) =>
+          (where.id && user.id === where.id) ||
+          (where.email && user.email === where.email) ||
+          (where.googleSub && user.googleSub === where.googleSub),
+      ) ?? null,
+    create: async ({ data }: { data: Partial<UserRow> }) => {
       const now = new Date();
-      const row: DemoBrandRow = {
-        id: create.id!,
-        name: create.name!,
-        handle: create.handle!,
-        walletAddress: create.walletAddress!,
-        industry: create.industry!,
-        websiteUrl: create.websiteUrl ?? null,
-        logoUrl: create.logoUrl ?? null,
-        monthlyBudgetAmount: create.monthlyBudgetAmount!,
+      const row: UserRow = {
+        id: data.id ?? this.id("user"),
+        email: data.email!,
+        googleSub: data.googleSub ?? null,
+        name: data.name ?? null,
+        avatarUrl: data.avatarUrl ?? null,
         createdAt: now,
         updatedAt: now,
       };
-      this.demoBrands.push(row);
+      this.users.push(row);
+      return row;
+    },
+    update: async ({ where, data }: { where: { id: string }; data: Partial<UserRow> }) => {
+      const row = this.users.find((user) => user.id === where.id);
+      if (!row) throw new Error("User not found");
+      Object.assign(row, data, { updatedAt: new Date() });
       return row;
     },
   };
 
-  demoCreator = {
-    findUnique: async ({ where }: { where: { id: string } }) =>
-      this.demoCreators.find((creator) => creator.id === where.id) ?? null,
-    findMany: async () =>
-      [...this.demoCreators].sort((a, b) => a.displayName.localeCompare(b.displayName)),
-    upsert: async ({ where, update, create }: { where: { id: string }; update: Partial<DemoCreatorRow>; create: Partial<DemoCreatorRow> }) => {
-      const existing = this.demoCreators.find((creator) => creator.id === where.id);
-      if (existing) {
-        Object.assign(existing, update, { updatedAt: new Date() });
-        return existing;
-      }
+  authSession = {
+    create: async ({ data }: { data: Partial<AuthSessionRow> }) => {
+      const row: AuthSessionRow = {
+        id: data.id ?? this.id("session"),
+        userId: data.userId!,
+        tokenHash: data.tokenHash!,
+        expiresAt: data.expiresAt!,
+        createdAt: data.createdAt ?? new Date(),
+      };
+      this.authSessions.push(row);
+      return row;
+    },
+    findUnique: async ({ where, include }: { where: { tokenHash: string }; include?: { user?: boolean } }) => {
+      const row = this.authSessions.find((session) => session.tokenHash === where.tokenHash);
+      if (!row) return null;
+      return include?.user
+        ? { ...row, user: this.users.find((user) => user.id === row.userId)! }
+        : row;
+    },
+    deleteMany: async ({ where }: { where: { tokenHash: string } }) => {
+      const before = this.authSessions.length;
+      this.authSessions = this.authSessions.filter((session) => session.tokenHash !== where.tokenHash);
+      return { count: before - this.authSessions.length };
+    },
+  };
 
+  sponsorProfile = {
+    create: async ({ data }: { data: Partial<SponsorProfileRow> }) => {
       const now = new Date();
-      const row: DemoCreatorRow = {
-        id: create.id!,
-        handle: create.handle!,
-        displayName: create.displayName!,
-        walletAddress: create.walletAddress!,
-        channelUrl: create.channelUrl ?? null,
-        category: create.category!,
-        averageViews: create.averageViews!,
-        audience: create.audience ?? null,
-        avatarUrl: create.avatarUrl ?? null,
+      const row: SponsorProfileRow = {
+        id: data.id ?? this.id("sponsor"),
+        userId: data.userId!,
+        name: data.name!,
+        handle: data.handle!,
+        walletAddress: data.walletAddress!,
+        industry: data.industry!,
+        websiteUrl: data.websiteUrl ?? null,
+        logoUrl: data.logoUrl ?? null,
+        monthlyBudgetAmount: data.monthlyBudgetAmount ?? "0",
         createdAt: now,
         updatedAt: now,
       };
-      this.demoCreators.push(row);
+      this.sponsorProfiles.push(row);
       return row;
+    },
+    findUnique: async ({ where }: { where: Partial<Pick<SponsorProfileRow, "id" | "handle">> }) =>
+      this.sponsorProfiles.find(
+        (profile) => (where.id && profile.id === where.id) || (where.handle && profile.handle === where.handle),
+      ) ?? null,
+    findMany: async (args?: { where?: Partial<Pick<SponsorProfileRow, "id" | "userId">> }) => {
+      const where = args?.where;
+      return this.sponsorProfiles
+        .filter((profile) => (!where?.id || profile.id === where.id) && (!where?.userId || profile.userId === where.userId))
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    },
+  };
+
+  creatorProfile = {
+    create: async ({ data }: { data: Partial<CreatorProfileRow> }) => {
+      const now = new Date();
+      const row: CreatorProfileRow = {
+        id: data.id ?? this.id("creator"),
+        userId: data.userId!,
+        handle: data.handle!,
+        displayName: data.displayName!,
+        walletAddress: data.walletAddress!,
+        channelUrl: data.channelUrl ?? null,
+        category: data.category!,
+        averageViews: data.averageViews ?? 0,
+        audience: data.audience ?? null,
+        avatarUrl: data.avatarUrl ?? null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      this.creatorProfiles.push(row);
+      return row;
+    },
+    findUnique: async ({ where }: { where: Partial<Pick<CreatorProfileRow, "id" | "handle">> }) =>
+      this.creatorProfiles.find(
+        (profile) => (where.id && profile.id === where.id) || (where.handle && profile.handle === where.handle),
+      ) ?? null,
+    findMany: async (args?: { where?: Partial<Pick<CreatorProfileRow, "id" | "userId">>; take?: number }) => {
+      const where = args?.where;
+      const rows = this.creatorProfiles
+        .filter((profile) => (!where?.id || profile.id === where.id) && (!where?.userId || profile.userId === where.userId))
+        .sort((a, b) => a.displayName.localeCompare(b.displayName));
+      return args?.take ? rows.slice(0, args.take) : rows;
+    },
+  };
+
+  profileWallet = {
+    create: async ({ data }: { data: Partial<ProfileWalletRow> }) => {
+      const row: ProfileWalletRow = {
+        id: data.id ?? this.id("wallet"),
+        profileType: data.profileType!,
+        profileId: data.profileId!,
+        walletAddress: data.walletAddress!,
+        privateKey: data.privateKey!,
+        provisionedAt: data.provisionedAt ?? null,
+        createdAt: data.createdAt ?? new Date(),
+      };
+      this.profileWallets.push(row);
+      return row;
+    },
+    findUnique: async ({
+      where,
+    }: {
+      where: { id?: string; profileType_profileId?: { profileType: string; profileId: string } };
+    }) =>
+      this.profileWallets.find(
+        (wallet) =>
+          (where.id && wallet.id === where.id) ||
+          (where.profileType_profileId &&
+            wallet.profileType === where.profileType_profileId.profileType &&
+            wallet.profileId === where.profileType_profileId.profileId),
+      ) ?? null,
+    update: async ({ where, data }: { where: { id: string }; data: Partial<ProfileWalletRow> }) => {
+      const row = this.profileWallets.find((wallet) => wallet.id === where.id);
+      if (!row) throw new Error("Wallet not found");
+      Object.assign(row, data);
+      return row;
+    },
+  };
+
+  contractInvite = {
+    create: async ({
+      data,
+      include,
+    }: {
+      data: Partial<ContractInviteRow>;
+      include?: { sponsorProfile?: boolean; creatorProfile?: boolean; agreement?: unknown };
+    }) => {
+      const now = new Date();
+      const row: ContractInviteRow = {
+        id: data.id ?? this.id("invite"),
+        sponsorProfileId: data.sponsorProfileId!,
+        creatorProfileId: data.creatorProfileId!,
+        agreementId: data.agreementId!,
+        status: data.status ?? "pending",
+        acceptedAt: data.acceptedAt ?? null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      this.contractInvites.push(row);
+      return this.hydrateInvite(row, include);
+    },
+    findUnique: async ({
+      where,
+      include,
+    }: {
+      where: { id?: string; agreementId?: string };
+      include?: { sponsorProfile?: boolean; creatorProfile?: boolean; agreement?: unknown };
+    }) => {
+      const row =
+        this.contractInvites.find(
+          (invite) => (where.id && invite.id === where.id) || (where.agreementId && invite.agreementId === where.agreementId),
+        ) ?? null;
+      return row ? this.hydrateInvite(row, include) : null;
+    },
+    findMany: async ({
+      where,
+      include,
+    }: {
+      where?: Partial<Pick<ContractInviteRow, "sponsorProfileId" | "creatorProfileId" | "status">>;
+      include?: { sponsorProfile?: boolean; creatorProfile?: boolean; agreement?: unknown };
+    }) =>
+      this.contractInvites
+        .filter(
+          (invite) =>
+            (!where?.sponsorProfileId || invite.sponsorProfileId === where.sponsorProfileId) &&
+            (!where?.creatorProfileId || invite.creatorProfileId === where.creatorProfileId) &&
+            (!where?.status || invite.status === where.status),
+        )
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .map((invite) => this.hydrateInvite(invite, include)),
+    update: async ({
+      where,
+      data,
+      include,
+    }: {
+      where: { id: string };
+      data: Partial<ContractInviteRow>;
+      include?: { sponsorProfile?: boolean; creatorProfile?: boolean; agreement?: unknown };
+    }) => {
+      const row = this.contractInvites.find((invite) => invite.id === where.id);
+      if (!row) throw new Error("Invite not found");
+      Object.assign(row, data, { updatedAt: new Date() });
+      return this.hydrateInvite(row, include);
     },
   };
 
@@ -358,8 +574,10 @@ export class FakePrisma {
   snapshot() {
     return {
       agreements: this.agreements.length,
-      demoBrands: this.demoBrands.length,
-      demoCreators: this.demoCreators.length,
+      users: this.users.length,
+      sponsorProfiles: this.sponsorProfiles.length,
+      creatorProfiles: this.creatorProfiles.length,
+      contractInvites: this.contractInvites.length,
     };
   }
 
@@ -399,6 +617,22 @@ export class FakePrisma {
     }
 
     return true;
+  }
+
+  private hydrateInvite(
+    invite: ContractInviteRow,
+    include?: { sponsorProfile?: boolean; creatorProfile?: boolean; agreement?: unknown },
+  ) {
+    return {
+      ...invite,
+      ...(include?.sponsorProfile
+        ? { sponsorProfile: this.sponsorProfiles.find((profile) => profile.id === invite.sponsorProfileId)! }
+        : {}),
+      ...(include?.creatorProfile
+        ? { creatorProfile: this.creatorProfiles.find((profile) => profile.id === invite.creatorProfileId)! }
+        : {}),
+      ...(include?.agreement ? { agreement: this.hydrateAgreement(invite.agreementId)! } : {}),
+    };
   }
 
   private hydrateAgreement(id: string) {

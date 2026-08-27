@@ -90,7 +90,7 @@ function PayoutTable({ rows, emptyLabel }: { rows: PayoutRow[]; emptyLabel: stri
                 <div className="text-xs capitalize text-muted">{payout.kind}</div>
               </td>
               <td className="px-4 py-3 text-muted">{contract.title ?? "Untitled"}</td>
-              <td className="px-4 py-3 text-muted">{partyName(contract.demoBrand)}</td>
+              <td className="px-4 py-3 text-muted">{partyName(contract.sponsorProfile)}</td>
               <td className="px-4 py-3 tabular-nums">{formatUsdc(payout.amount)}</td>
               <td className="px-4 py-3">
                 <StatusPill status={payout.status} />

@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
+import { readSession } from "./lib/session";
 import { EntryPage } from "./pages/Entry";
 import { CreatorLayout } from "./pages/CreatorLayout";
 import { SponsorLayout } from "./pages/SponsorLayout";
@@ -22,11 +23,17 @@ function CreatorLegacyDealDetailRedirect() {
   return <Navigate to={`/creator/${creatorId}/contracts/${id}`} replace />;
 }
 
+function SponsorLegacyRedirect() {
+  const session = readSession();
+  return <Navigate to={session?.role === "sponsor" ? `/sponsor/${session.id}` : "/"} replace />;
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<EntryPage />} />
-      <Route path="/sponsor" element={<SponsorLayout />}>
+      <Route path="/sponsor" element={<SponsorLegacyRedirect />} />
+      <Route path="/sponsor/:sponsorId" element={<SponsorLayout />}>
         <Route index element={<SponsorHomePage />} />
         <Route path="contracts" element={<SponsorContractsPage />} />
         <Route path="contracts/new" element={<NewContractPage />} />

@@ -25,6 +25,7 @@ model Agreement {
   payouts               Payout[]
   observations          MetricObservation[]
   blockchainRecord      BlockchainRecord?
+  contractInvite        ContractInvite?
 }
 
 model Participant {
@@ -109,29 +110,88 @@ model BlockchainRecord {
   agreement      Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
 }
 
-model DemoBrand {
-  id                  String   @id @default(cuid())
+model User {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  googleSub      String?          @unique
+  name           String?
+  avatarUrl      String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  sessions       AuthSession[]
+  sponsors       SponsorProfile[]
+  creators       CreatorProfile[]
+}
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SponsorProfile {
+  id                  String           @id @default(cuid())
+  userId              String
   name                String
-  handle              String   @unique
-  walletAddress       String   @unique
+  handle              String           @unique
+  walletAddress       String           @unique
   industry            String
   websiteUrl          String?
   logoUrl             String?
-  monthlyBudgetAmount String
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  monthlyBudgetAmount String           @default("0")
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contractInvites     ContractInvite[]
 }
 
-model DemoCreator {
-  id            String   @id @default(cuid())
-  handle        String   @unique
-  displayName   String
-  walletAddress String   @unique
-  channelUrl    String?
-  category      String
-  averageViews  Int
-  audience      String?
-  avatarUrl     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model CreatorProfile {
+  id              String           @id @default(cuid())
+  userId          String
+  handle          String           @unique
+  displayName     String
+  walletAddress   String           @unique
+  channelUrl      String?
+  category        String
+  averageViews    Int              @default(0)
+  audience        String?
+  avatarUrl       String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contractInvites ContractInvite[]
+}
+
+model ProfileWallet {
+  id            String    @id @default(cuid())
+  profileType   String
+  profileId     String
+  walletAddress String    @unique
+  privateKey    String
+  provisionedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([profileType, profileId])
+}
+
+model ContractInvite {
+  id               String         @id @default(cuid())
+  sponsorProfileId String
+  creatorProfileId String
+  agreementId      String         @unique
+  status           String         @default("pending")
+  acceptedAt       DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  sponsorProfile   SponsorProfile @relation(fields: [sponsorProfileId], references: [id], onDelete: Cascade)
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  agreement        Agreement      @relation(fields: [agreementId], references: [id], onDelete: Cascade)
 }

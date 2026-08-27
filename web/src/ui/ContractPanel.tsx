@@ -41,7 +41,7 @@ export function ContractPanel({
           <h2 className="text-sm font-medium text-ink">Actions</h2>
           <p className="mt-1 text-sm text-muted">
             {variant === "sponsor"
-              ? "Delivery approval is an operator check. Video content is not verified in this demo."
+              ? "Delivery approval is an operator check. Video content is not verified yet."
               : "Submit observed performance metrics for this active contract. File uploads are handled separately."}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -75,8 +75,8 @@ export function ContractPanel({
         <InfoCell label="Pending">{formatUsdc(contract.financials.pendingPayoutAmount)}</InfoCell>
         <InfoCell label="Deadline">{formatDate(contract.deadline)}</InfoCell>
         <InfoCell label="Measurement window">{contract.measurementWindowDays} days</InfoCell>
-        <InfoCell label="Sponsor">{partyName(contract.demoBrand)}</InfoCell>
-        <InfoCell label="Creator">{partyName(contract.demoCreator)}</InfoCell>
+        <InfoCell label="Sponsor">{partyName(contract.sponsorProfile)}</InfoCell>
+        <InfoCell label="Creator">{partyName(contract.creatorProfile)}</InfoCell>
       </section>
 
       <section className="rounded-[8px] border-2 border-ink/20 bg-surface p-5">

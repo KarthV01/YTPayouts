@@ -47,10 +47,20 @@ npm run deploy:local
 
 Set the printed `ESCROW_CONTRACT_ADDRESS` and `USDC_CONTRACT_ADDRESS` values in `.env`, or keep the generated `deployments/local.json` file. The API prefers `.env` and falls back to `deployments/local.json`. The deploy script also mints mock USDC to Anvil account #1 and approves the escrow contract for local agreement funding.
 
-Seed the fake brand workspace:
+Configure Google OAuth in `.env`:
 
 ```powershell
-npm run seed:demo
+APP_URL="http://localhost:5173"
+API_URL="http://localhost:3000"
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+AUTH_COOKIE_SECRET="use-a-long-random-string"
+```
+
+In Google Cloud, the local redirect URI is:
+
+```text
+http://localhost:3000/api/auth/google/callback
 ```
 
 Start the API:
@@ -66,48 +76,46 @@ npm install --prefix web
 npm run web:dev
 ```
 
-Open `http://localhost:5173`. The entry page lets you continue as the seeded sponsor (Stellar Snacks) or as Maya, Kevin, or Lena. Creating contracts, funding escrow, and releasing payouts still require Anvil plus a local deploy.
+Open `http://localhost:5173`. The entry page signs in with Google, then lets that email create sponsor and creator profiles. Each profile gets a generated local EVM wallet stored in SQLite. Generated-wallet funding is local Anvil only; Base/mainnet still require a future real wallet-connection flow.
 
-## Demo frontend
+## Authenticated Frontend
 
-The UI talks to the demo APIs:
+The UI talks to authenticated APIs:
 
-- Sponsor: `/demo/brand/*`
-- Creator: `/demo/creator/:creatorId/*`
-- Account picker: `/demo/profiles`
+- Auth: `/api/auth/*`
+- Profiles and account picker: `/api/profiles`
+- Sponsor workspaces: `/api/sponsors/:sponsorId/*`
+- Creator workspaces: `/api/creators/:creatorId/*`
+- Creator search: `/api/creators/search?q=...`
 
-Delivery approval is a manual operator action. Video content is not checked in this demo. Use **Record performance** on an active contract to submit integer metric values and release bonuses.
+Sponsors create contract invitations by searching creator account names/handles. A contract remains a draft invitation until the selected creator accepts it; acceptance creates/funds escrow and locks the full cap from the sponsor's generated local wallet. Delivery approval is still a manual operator action. Use **Record performance** on an active contract to submit integer metric values and release bonuses.
 
-## Demo Brand API
+## Account API
 
-The demo APIs feed the local frontend. You can still call them with curl:
-
-Dashboard:
+Current signed-in user:
 
 ```bash
-curl http://localhost:3000/demo/profiles
-curl http://localhost:3000/demo/brand/dashboard
-curl http://localhost:3000/demo/creator/demo_creator_maya/dashboard
+curl -b cookies.txt http://localhost:3000/api/auth/me
 ```
 
-Contract builder metadata:
+List profiles owned by the signed-in email:
 
 ```bash
-curl http://localhost:3000/demo/brand/contract-builder
+curl -b cookies.txt http://localhost:3000/api/profiles
 ```
 
-List demo brand contracts:
+Search creator accounts:
 
 ```bash
-curl http://localhost:3000/demo/brand/contracts
+curl -b cookies.txt "http://localhost:3000/api/creators/search?q=maker"
 ```
 
-Create and immediately fund a new demo contract:
+Create a contract invite:
 
 ```bash
-curl -X POST http://localhost:3000/demo/brand/contracts \
+curl -b cookies.txt -X POST http://localhost:3000/api/sponsors/{sponsorId}/contract-invites \
   -H "Content-Type: application/json" \
-  --data @examples/demo-create-contract.json
+  --data @examples/create-contract-invite.json
 ```
 
 ## API Flow

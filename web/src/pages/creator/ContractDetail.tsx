@@ -69,7 +69,7 @@ function DeliverableUpload() {
         <div>
           <h2 className="text-sm font-medium text-ink">Upload deliverable</h2>
           <p className="mt-1 max-w-[520px] text-sm text-muted">
-            Add a drafted video, brief, or proof file to this contract for sponsor review. File storage is not connected in this demo yet.
+            Add a drafted video, brief, or proof file to this contract for sponsor review. File storage is not connected yet.
           </p>
         </div>
         <Button type="button" onClick={() => inputRef.current?.click()}>

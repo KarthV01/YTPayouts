@@ -44,7 +44,7 @@ export function ContractTable({
                 </Link>
               </td>
               <td className="px-4 py-3 text-muted">
-                {partyName(counterparty === "creator" ? contract.demoCreator : contract.demoBrand)}
+                {partyName(counterparty === "creator" ? contract.creatorProfile : contract.sponsorProfile)}
               </td>
               <td className="px-4 py-3">
                 <StatusPill status={contract.status} />

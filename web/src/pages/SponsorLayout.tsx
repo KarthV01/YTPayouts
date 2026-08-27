@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { truncateAddress } from "../lib/format";
 import { writeSession } from "../lib/session";
@@ -7,25 +7,26 @@ import { useResource } from "../lib/useResource";
 import { AppShell } from "../ui/AppShell";
 
 export function SponsorLayout() {
-  const { data } = useResource("sponsor-shell", () => api.brandDashboard());
-  const brand = data?.brand;
+  const { sponsorId = "" } = useParams();
+  const { data } = useResource(`sponsor-shell-${sponsorId}`, () => api.brandDashboard(sponsorId));
+  const sponsor = data?.sponsor;
 
   useEffect(() => {
-    if (brand) {
-      writeSession({ role: "sponsor", id: brand.id });
+    if (sponsor) {
+      writeSession({ role: "sponsor", id: sponsor.id });
     }
-  }, [brand]);
+  }, [sponsor]);
 
   return (
     <AppShell
-      accountLabel={brand?.name ?? "Sponsor"}
-      accountMeta={brand ? truncateAddress(brand.walletAddress) : undefined}
-      currentSession={{ role: "sponsor", id: brand?.id ?? "demo_brand_stellar_snacks" }}
+      accountLabel={sponsor?.name ?? "Sponsor"}
+      accountMeta={sponsor ? truncateAddress(sponsor.walletAddress) : undefined}
+      currentSession={{ role: "sponsor", id: sponsor?.id ?? sponsorId }}
       nav={[
-        { to: "/sponsor", label: "Home" },
-        { to: "/sponsor/contracts", label: "Contracts" },
-        { to: "/sponsor/creators", label: "Creators" },
-        { to: "/sponsor/contracts/new", label: "New contract" },
+        { to: `/sponsor/${sponsorId}`, label: "Home" },
+        { to: `/sponsor/${sponsorId}/contracts`, label: "Contracts" },
+        { to: `/sponsor/${sponsorId}/creators`, label: "Creators" },
+        { to: `/sponsor/${sponsorId}/contracts/new`, label: "New contract" },
       ]}
     >
       <Outlet />

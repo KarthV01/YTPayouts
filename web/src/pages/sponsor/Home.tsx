@@ -1,3 +1,4 @@
+import { useParams } from "react-router-dom";
 import { api } from "../../lib/api";
 import { useResource } from "../../lib/useResource";
 import { ContractTable } from "../../ui/ContractTable";
@@ -5,7 +6,10 @@ import { KpiRow } from "../../ui/KpiRow";
 import { Banner, ButtonLink, PageHeader } from "../../ui/primitives";
 
 export function SponsorHomePage() {
-  const { data, error, loading } = useResource("brand-dashboard", () => api.brandDashboard());
+  const { sponsorId = "" } = useParams();
+  const { data, error, loading } = useResource(`brand-dashboard-${sponsorId}`, () =>
+    api.brandDashboard(sponsorId),
+  );
 
   if (loading) {
     return <p className="text-sm text-muted">Loading dashboard...</p>;
@@ -22,7 +26,7 @@ export function SponsorHomePage() {
       <PageHeader
         title="Home"
         description="Escrowed sponsorships for this workspace."
-        action={<ButtonLink to="/sponsor/contracts/new">New contract</ButtonLink>}
+        action={<ButtonLink to={`/sponsor/${sponsorId}/contracts/new`}>New contract</ButtonLink>}
       />
       <KpiRow
         items={[
@@ -41,7 +45,7 @@ export function SponsorHomePage() {
         <ContractTable
           contracts={contracts}
           counterparty="creator"
-          hrefFor={(contract) => `/sponsor/contracts/${contract.id}`}
+          hrefFor={(contract) => `/sponsor/${sponsorId}/contracts/${contract.id}`}
         />
       </div>
     </div>

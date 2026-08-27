@@ -7,8 +7,10 @@ import { ContractPanel } from "../../ui/ContractPanel";
 import { Banner, PageHeader } from "../../ui/primitives";
 
 export function SponsorContractDetailPage() {
-  const { id = "" } = useParams();
-  const { data, error, loading, reload } = useResource(`brand-contract-${id}`, () => api.brandContract(id));
+  const { sponsorId = "", id = "" } = useParams();
+  const { data, error, loading, reload } = useResource(`brand-contract-${sponsorId}-${id}`, () =>
+    api.brandContract(sponsorId, id),
+  );
   const [contract, setContract] = useState<EnrichedAgreement | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -58,9 +60,8 @@ export function SponsorContractDetailPage() {
         busy={busy}
         error={actionError}
         message={message}
-        onFund={() => run(() => api.fundContract(view.id))}
-        onApprove={() => run(() => api.approveDelivery(view.id))}
-        onRecordMetric={(input) => run(() => api.recordBrandMetric(view.id, input))}
+        onApprove={() => run(() => api.approveDelivery(sponsorId, view.id))}
+        onRecordMetric={(input) => run(() => api.recordBrandMetric(sponsorId, view.id, input))}
       />
     </div>
   );

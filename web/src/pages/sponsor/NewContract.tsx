@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../../lib/api";
 import { formatUsdc, usdcToUnits } from "../../lib/money";
+import type { CreatorProfile } from "../../lib/types";
 import { useResource } from "../../lib/useResource";
 import { Banner, Button, Field, Input, PageHeader, Select, Textarea } from "../../ui/primitives";
 
@@ -19,9 +20,13 @@ type BonusRow = {
 
 export function NewContractPage() {
   const navigate = useNavigate();
+  const { sponsorId = "" } = useParams();
   const [searchParams] = useSearchParams();
-  const { data, error, loading } = useResource("contract-builder", () => api.contractBuilder());
-  const [creatorId, setCreatorId] = useState(searchParams.get("creatorId") ?? "");
+  const { data, error, loading } = useResource(`contract-builder-${sponsorId}`, () => api.contractBuilder(sponsorId));
+  const [creatorProfileId, setCreatorProfileId] = useState(searchParams.get("creatorProfileId") ?? "");
+  const [creatorQuery, setCreatorQuery] = useState("");
+  const [creatorResults, setCreatorResults] = useState<CreatorProfile[]>([]);
+  const [creatorLoading, setCreatorLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [deliverable, setDeliverable] = useState("");
   const [deadline, setDeadline] = useState("");
@@ -33,6 +38,7 @@ export function NewContractPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const selectedCreator = creatorResults.find((creator) => creator.id === creatorProfileId) ?? null;
   const preview = useMemo(() => {
     try {
       const base = BigInt(usdcToUnits(baseUsdc || "0"));
@@ -53,9 +59,9 @@ export function NewContractPage() {
   }, [baseUsdc, bonuses, capUsdc, milestones]);
 
   useEffect(() => {
-    const fromQuery = searchParams.get("creatorId");
+    const fromQuery = searchParams.get("creatorProfileId");
     if (fromQuery) {
-      setCreatorId(fromQuery);
+      setCreatorProfileId(fromQuery);
     }
   }, [searchParams]);
 
@@ -65,6 +71,19 @@ export function NewContractPage() {
 
   if (error || !data) {
     return <Banner>{error ?? "Unable to load the contract builder."}</Banner>;
+  }
+
+  async function searchCreators() {
+    setCreatorLoading(true);
+    setFormError(null);
+    try {
+      const result = await api.searchCreators(creatorQuery);
+      setCreatorResults(result.creators);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Could not search creators");
+    } finally {
+      setCreatorLoading(false);
+    }
   }
 
   async function onSubmit(event: FormEvent) {
@@ -96,8 +115,8 @@ export function NewContractPage() {
         throw new Error("Total cap must cover the base payout and all bonuses.");
       }
 
-      const created = await api.createContract({
-        creatorId,
+      const created = await api.createContract(sponsorId, {
+        creatorProfileId,
         title,
         deliverableDescription: deliverable,
         deadline: `${deadline}T00:00:00.000Z`,
@@ -107,7 +126,7 @@ export function NewContractPage() {
         viewMilestones,
         metricBonuses,
       });
-      navigate(`/sponsor/contracts/${created.id}`);
+      navigate(`/sponsor/${sponsorId}/contracts/${created.agreement.id}`);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not create contract");
     } finally {
@@ -119,7 +138,7 @@ export function NewContractPage() {
     <div className="max-w-[720px]">
       <PageHeader
         title="New contract"
-        description={`Creating this deal funds ${data.token.symbol} escrow immediately.`}
+        description={`Send an invitation to a creator account. ${data.token.symbol} escrow funds when the creator accepts.`}
       />
       {formError ? (
         <div className="mb-4">
@@ -127,16 +146,55 @@ export function NewContractPage() {
         </div>
       ) : null}
       <form className="space-y-6" onSubmit={onSubmit}>
-        <Field label="Creator">
-          <Select value={creatorId} onChange={(event) => setCreatorId(event.target.value)} required>
-            <option value="">Select a creator</option>
-            {data.creators.map((creator) => (
-              <option key={creator.id} value={creator.id}>
-                {creator.displayName} - {creator.category}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <section className="rounded-[8px] border-2 border-ink/20 bg-surface p-4">
+          <h2 className="text-sm font-medium text-ink">Creator account</h2>
+          <div className="mt-3 flex gap-2">
+            <Input
+              value={creatorQuery}
+              onChange={(event) => setCreatorQuery(event.target.value)}
+              placeholder="Search by handle or name"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={creatorLoading || creatorQuery.trim().length < 2}
+              onClick={searchCreators}
+            >
+              {creatorLoading ? "Searching..." : "Search"}
+            </Button>
+          </div>
+          {creatorProfileId ? (
+            <p className="mt-3 text-sm text-muted">
+              Selected{" "}
+              <span className="font-medium text-ink">
+                {selectedCreator ? `${selectedCreator.displayName} (${selectedCreator.handle})` : creatorProfileId}
+              </span>
+            </p>
+          ) : null}
+          {creatorResults.length > 0 ? (
+            <div className="mt-3 grid gap-2">
+              {creatorResults.map((creator) => {
+                const selected = creator.id === creatorProfileId;
+                return (
+                  <button
+                    key={creator.id}
+                    type="button"
+                    className={`rounded-[6px] border-2 px-3 py-2 text-left transition-colors ${
+                      selected ? "border-accent bg-accent-soft" : "border-ink/15 hover:border-ink/35 hover:bg-accent-soft"
+                    }`}
+                    onClick={() => setCreatorProfileId(creator.id)}
+                  >
+                    <div className="text-sm font-semibold text-ink">{creator.displayName}</div>
+                    <div className="text-xs text-muted">
+                      {creator.handle} - {creator.category}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </section>
+
         <Field label="Title">
           <Input value={title} onChange={(event) => setTitle(event.target.value)} required />
         </Field>
@@ -297,7 +355,7 @@ export function NewContractPage() {
             type="submit"
             disabled={
               submitting ||
-              !creatorId ||
+              !creatorProfileId ||
               !title.trim() ||
               !deliverable.trim() ||
               !deadline ||
@@ -307,7 +365,7 @@ export function NewContractPage() {
               (preview ? !preview.valid : true)
             }
           >
-            {submitting ? "Creating..." : "Create and fund"}
+            {submitting ? "Sending..." : "Send invite"}
           </Button>
         </div>
       </form>

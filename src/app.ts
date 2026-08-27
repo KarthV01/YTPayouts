@@ -3,9 +3,11 @@ import Fastify from "fastify";
 import { ZodError } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import type { ChainClient } from "./blockchain/client.js";
-import { registerDemoBrandRoutes } from "./routes/demoBrand.js";
-import { registerDemoCreatorRoutes } from "./routes/demoCreator.js";
 import { registerAgreementRoutes } from "./routes/agreements.js";
+import { registerAuthRoutes } from "./routes/auth.js";
+import { registerCreatorRoutes } from "./routes/creators.js";
+import { registerProfileRoutes } from "./routes/profiles.js";
+import { registerSponsorRoutes } from "./routes/sponsors.js";
 import { HttpError } from "./http/errors.js";
 
 export type AppDependencies = {
@@ -48,8 +50,10 @@ export async function buildApp(deps: AppDependencies) {
   }));
 
   await app.register(registerAgreementRoutes, deps);
-  await app.register(registerDemoBrandRoutes, deps);
-  await app.register(registerDemoCreatorRoutes, deps);
+  await app.register(registerAuthRoutes, deps);
+  await app.register(registerProfileRoutes, deps);
+  await app.register(registerSponsorRoutes, deps);
+  await app.register(registerCreatorRoutes, deps);
 
   return app;
 }

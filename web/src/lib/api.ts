@@ -1,12 +1,17 @@
 import type {
+  AcceptInviteResult,
+  AuthUser,
   BrandDashboard,
   ContractBuilder,
+  ContractInvite,
   CreateContractInput,
   CreatorDashboard,
-  DemoProfiles,
+  CreatorProfile,
   EnrichedAgreement,
   MetricObservationInput,
   MutationResult,
+  ProfilesResponse,
+  SponsorProfile,
 } from "./types";
 
 export class ApiError extends Error {
@@ -21,6 +26,7 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
+    credentials: "include",
     ...init,
     headers: {
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
@@ -43,33 +49,65 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  profiles: () => request<DemoProfiles>("/demo/profiles"),
-  brandDashboard: () => request<BrandDashboard>("/demo/brand/dashboard"),
-  brandContracts: () => request<EnrichedAgreement[]>("/demo/brand/contracts"),
-  brandContract: (id: string) => request<EnrichedAgreement>(`/demo/brand/contracts/${id}`),
-  contractBuilder: () => request<ContractBuilder>("/demo/brand/contract-builder"),
-  createContract: (input: CreateContractInput) =>
-    request<EnrichedAgreement>("/demo/brand/contracts", {
+  me: () => request<{ user: AuthUser | null }>("/api/auth/me"),
+  logout: () => request<{ ok: true }>("/api/auth/logout", { method: "POST" }),
+  profiles: () => request<ProfilesResponse>("/api/profiles"),
+  createSponsorProfile: (input: {
+    name: string;
+    handle: string;
+    industry: string;
+    websiteUrl?: string;
+    logoUrl?: string;
+    monthlyBudgetAmount?: string;
+  }) =>
+    request<SponsorProfile>("/api/profiles/sponsors", {
       method: "POST",
       body: JSON.stringify(input),
     }),
-  fundContract: (id: string) =>
-    request<EnrichedAgreement>(`/demo/brand/contracts/${id}/fund`, { method: "POST" }),
-  approveDelivery: (id: string) =>
-    request<MutationResult>(`/demo/brand/contracts/${id}/approve-delivery`, { method: "POST" }),
-  recordBrandMetric: (id: string, input: MetricObservationInput) =>
-    request<MutationResult>(`/demo/brand/contracts/${id}/metrics`, {
+  createCreatorProfile: (input: {
+    handle: string;
+    displayName: string;
+    channelUrl?: string;
+    category: string;
+    averageViews?: number;
+    audience?: string;
+    avatarUrl?: string;
+  }) =>
+    request<CreatorProfile>("/api/profiles/creators", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  searchCreators: (q: string) =>
+    request<{ creators: CreatorProfile[] }>(`/api/creators/search?q=${encodeURIComponent(q)}`),
+  brandDashboard: (sponsorId: string) => request<BrandDashboard>(`/api/sponsors/${sponsorId}/dashboard`),
+  brandContracts: (sponsorId: string) => request<EnrichedAgreement[]>(`/api/sponsors/${sponsorId}/contracts`),
+  brandContract: (sponsorId: string, id: string) =>
+    request<EnrichedAgreement>(`/api/sponsors/${sponsorId}/contracts/${id}`),
+  contractBuilder: (sponsorId: string) => request<ContractBuilder>(`/api/sponsors/${sponsorId}/contract-builder`),
+  createContract: (sponsorId: string, input: CreateContractInput) =>
+    request<ContractInvite>(`/api/sponsors/${sponsorId}/contract-invites`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  approveDelivery: (sponsorId: string, id: string) =>
+    request<MutationResult>(`/api/sponsors/${sponsorId}/contracts/${id}/approve-delivery`, { method: "POST" }),
+  recordBrandMetric: (sponsorId: string, id: string, input: MetricObservationInput) =>
+    request<MutationResult>(`/api/sponsors/${sponsorId}/contracts/${id}/metrics`, {
       method: "POST",
       body: JSON.stringify({ source: "simulation", ...input }),
     }),
   creatorDashboard: (creatorId: string) =>
-    request<CreatorDashboard>(`/demo/creator/${creatorId}/dashboard`),
+    request<CreatorDashboard>(`/api/creators/${creatorId}/dashboard`),
   creatorContracts: (creatorId: string) =>
-    request<EnrichedAgreement[]>(`/demo/creator/${creatorId}/contracts`),
+    request<EnrichedAgreement[]>(`/api/creators/${creatorId}/contracts`),
   creatorContract: (creatorId: string, id: string) =>
-    request<EnrichedAgreement>(`/demo/creator/${creatorId}/contracts/${id}`),
+    request<EnrichedAgreement>(`/api/creators/${creatorId}/contracts/${id}`),
+  creatorInvites: (creatorId: string) =>
+    request<{ invites: ContractInvite[] }>(`/api/creators/${creatorId}/invites`),
+  acceptInvite: (creatorId: string, inviteId: string) =>
+    request<AcceptInviteResult>(`/api/creators/${creatorId}/invites/${inviteId}/accept`, { method: "POST" }),
   recordCreatorMetric: (creatorId: string, id: string, input: MetricObservationInput) =>
-    request<MutationResult>(`/demo/creator/${creatorId}/contracts/${id}/metrics`, {
+    request<MutationResult>(`/api/creators/${creatorId}/contracts/${id}/metrics`, {
       method: "POST",
       body: JSON.stringify({ source: "simulation", ...input }),
     }),

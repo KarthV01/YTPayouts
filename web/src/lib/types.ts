@@ -1,4 +1,11 @@
-export type DemoBrand = {
+export type AuthUser = {
+  id: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+};
+
+export type SponsorProfile = {
   id: string;
   name: string;
   handle: string;
@@ -9,7 +16,7 @@ export type DemoBrand = {
   monthlyBudgetAmount: string;
 };
 
-export type DemoCreator = {
+export type CreatorProfile = {
   id: string;
   handle: string;
   displayName: string;
@@ -21,9 +28,10 @@ export type DemoCreator = {
   avatarUrl: string | null;
 };
 
-export type DemoProfiles = {
-  sponsors: DemoBrand[];
-  creators: DemoCreator[];
+export type ProfilesResponse = {
+  user: AuthUser;
+  sponsors: SponsorProfile[];
+  creators: CreatorProfile[];
 };
 
 export type DashboardTotals = {
@@ -51,12 +59,14 @@ export type BlockchainRecord = {
   createTxHash: string;
 };
 
-export type DemoParty = {
+export type Party = {
   id: string | null;
   handle: string | null;
   displayName?: string | null;
   name?: string | null;
   walletAddress?: string;
+  category?: string;
+  industry?: string;
 };
 
 export type ContractSummary = {
@@ -68,8 +78,8 @@ export type ContractSummary = {
   totalCapAmount: string;
   termsHash: string | null;
   blockchainRecord: BlockchainRecord | null;
-  demoBrand: DemoParty | null;
-  demoCreator: DemoParty | null;
+  sponsorProfile: Party | null;
+  creatorProfile: Party | null;
   financials: Financials;
 };
 
@@ -126,21 +136,33 @@ export type EnrichedAgreement = {
   payouts: Payout[];
   observations: Observation[];
   blockchainRecord: BlockchainRecord | null;
-  demoBrand: DemoParty | null;
-  demoCreator: DemoParty | null;
+  sponsorProfile: Party | null;
+  creatorProfile: Party | null;
   financials: Financials;
 };
 
+export type ContractInvite = {
+  id: string;
+  status: string;
+  createdAt: string;
+  acceptedAt: string | null;
+  sponsorProfile: SponsorProfile;
+  creatorProfile: CreatorProfile;
+  agreement: EnrichedAgreement;
+};
+
 export type BrandDashboard = {
-  brand: DemoBrand;
+  sponsor: SponsorProfile;
   totals: DashboardTotals;
   contracts: ContractSummary[];
+  pendingInvites: ContractInvite[];
 };
 
 export type CreatorDashboard = {
-  creator: DemoCreator;
+  creator: CreatorProfile;
   totals: DashboardTotals;
   contracts: ContractSummary[];
+  pendingInvites: ContractInvite[];
 };
 
 export type MetricOption = {
@@ -151,8 +173,7 @@ export type MetricOption = {
 };
 
 export type ContractBuilder = {
-  brand: DemoBrand;
-  creators: DemoCreator[];
+  sponsor: SponsorProfile;
   metrics: MetricOption[];
   token: { symbol: string; decimals: number; address: string | null };
   defaults: {
@@ -166,8 +187,13 @@ export type MutationResult = {
   agreement: EnrichedAgreement;
 };
 
+export type AcceptInviteResult = {
+  invite: ContractInvite;
+  agreement: EnrichedAgreement;
+};
+
 export type CreateContractInput = {
-  creatorId: string;
+  creatorProfileId: string;
   title: string;
   deliverableDescription: string;
   deadline: string;

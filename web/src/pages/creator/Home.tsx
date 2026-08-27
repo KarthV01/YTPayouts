@@ -1,15 +1,33 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../../lib/api";
 import { useResource } from "../../lib/useResource";
 import { ContractTable } from "../../ui/ContractTable";
 import { KpiRow } from "../../ui/KpiRow";
-import { Banner, PageHeader } from "../../ui/primitives";
+import { Banner, Button, PageHeader, StatusPill } from "../../ui/primitives";
+import { formatDate, partyName } from "../../lib/format";
+import { formatUsdc } from "../../lib/money";
 
 export function CreatorHomePage() {
   const { creatorId = "" } = useParams();
-  const { data, error, loading } = useResource(`creator-dashboard-${creatorId}`, () =>
+  const { data, error, loading, reload } = useResource(`creator-dashboard-${creatorId}`, () =>
     api.creatorDashboard(creatorId),
   );
+  const [busyInvite, setBusyInvite] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  async function acceptInvite(inviteId: string) {
+    setBusyInvite(inviteId);
+    setActionError(null);
+    try {
+      await api.acceptInvite(creatorId, inviteId);
+      reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not accept invite");
+    } finally {
+      setBusyInvite(null);
+    }
+  }
 
   if (loading) {
     return <p className="text-sm text-muted">Loading dashboard...</p>;
@@ -27,6 +45,11 @@ export function CreatorHomePage() {
   return (
     <div>
       <PageHeader title="Home" description="Current contracts, deadlines, and payouts for this creator wallet." />
+      {actionError ? (
+        <div className="mb-4">
+          <Banner>{actionError}</Banner>
+        </div>
+      ) : null}
       <KpiRow
         items={[
           { label: "Earned", value: data.totals.releasedPayoutAmount, money: true },
@@ -35,6 +58,38 @@ export function CreatorHomePage() {
           { label: "Completed", value: String(data.totals.byStatus.completed ?? 0) },
         ]}
       />
+      {data.pendingInvites.length > 0 ? (
+        <div className="mt-8">
+          <h2 className="mb-3 text-sm font-medium text-ink">Pending invitations</h2>
+          <div className="grid gap-3">
+            {data.pendingInvites.map((invite) => (
+              <div key={invite.id} className="rounded-[8px] border-2 border-ink/20 bg-surface p-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-semibold text-ink">
+                      {invite.agreement.title ?? "Untitled contract"}
+                    </div>
+                    <div className="mt-1 text-sm text-muted">
+                      {partyName(invite.sponsorProfile)} - {formatUsdc(invite.agreement.totalCapAmount)} cap - due{" "}
+                      {formatDate(invite.agreement.deadline)}
+                    </div>
+                    <div className="mt-2">
+                      <StatusPill status={invite.status} />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    disabled={busyInvite === invite.id}
+                    onClick={() => acceptInvite(invite.id)}
+                  >
+                    {busyInvite === invite.id ? "Accepting..." : "Accept"}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="mt-8">
         <h2 className="mb-3 text-sm font-medium text-ink">Current contracts</h2>
         <ContractTable
