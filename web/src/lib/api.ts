@@ -69,7 +69,6 @@ export const api = {
     displayName: string;
     channelUrl?: string;
     category: string;
-    averageViews?: number;
     audience?: string;
     avatarUrl?: string;
   }) =>

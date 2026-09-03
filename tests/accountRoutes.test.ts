@@ -48,7 +48,6 @@ describe("email-backed account API", () => {
         displayName: "First Creator",
         handle: "@firstcreator",
         category: "Food reviews",
-        averageViews: 10000,
       },
     });
     expect(creator.statusCode).toBe(201);
@@ -189,7 +188,6 @@ async function createCreator(app: Awaited<ReturnType<typeof buildApp>>, cookie: 
       displayName: "Maker Studio",
       handle: "@maker",
       category: "Tech",
-      averageViews: 25000,
     },
   });
   expect(response.statusCode).toBe(201);

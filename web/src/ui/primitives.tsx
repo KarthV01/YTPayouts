@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 export function Button({
@@ -74,20 +74,70 @@ export function Textarea({ className = "", ...props }: TextareaHTMLAttributes<HT
   );
 }
 
+const requiredMarkClass = "ml-0.5 text-[#c0392b]";
+const requiredControlClass =
+  "[&_input]:border-[#c0392b] [&_input]:focus:border-[#c0392b] [&_textarea]:border-[#c0392b] [&_textarea]:focus:border-[#c0392b] [&_select]:border-[#c0392b] [&_select]:focus:border-[#c0392b]";
+
+export function RequiredMark() {
+  return (
+    <span className={requiredMarkClass} aria-hidden="true">
+      *
+    </span>
+  );
+}
+
 export function Field({
   label,
   hint,
+  required = false,
   children,
 }: {
   label: string;
   hint?: string;
+  required?: boolean;
   children: ReactNode;
 }) {
+  const [showRequiredError, setShowRequiredError] = useState(false);
+  const startedRef = useRef(false);
+
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm text-ink">{label}</span>
+    <label
+      className={`block ${showRequiredError ? requiredControlClass : ""}`}
+      onInput={(event) => {
+        if (!required) {
+          return;
+        }
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
+          return;
+        }
+        if (target.value.length > 0) {
+          startedRef.current = true;
+        }
+        if (target.value.trim()) {
+          setShowRequiredError(false);
+        }
+      }}
+      onBlur={(event) => {
+        if (!required) {
+          return;
+        }
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
+          return;
+        }
+        if (startedRef.current && !target.value.trim()) {
+          setShowRequiredError(true);
+        }
+      }}
+    >
+      <span className="mb-1.5 block text-sm text-ink">
+        {label}
+        {required ? <RequiredMark /> : null}
+      </span>
       {children}
-      {hint ? <span className="mt-1 block text-xs text-muted">{hint}</span> : null}
+      {showRequiredError ? <span className="mt-1 block text-xs text-[#c0392b]">Required</span> : null}
+      {hint && !showRequiredError ? <span className="mt-1 block text-xs text-muted">{hint}</span> : null}
     </label>
   );
 }

@@ -61,7 +61,6 @@ export function AccountSwitcher({ currentSession }: { currentSession: Session })
         aria-expanded={open}
       >
         <span className="max-w-[150px] truncate">{current?.label ?? "Switch account"}</span>
-        <span className="text-muted">v</span>
       </button>
       {open ? (
         <div className="absolute right-0 top-11 z-50 w-[320px] rounded-[8px] border-2 border-ink/20 bg-surface p-3 shadow-[0_12px_30px_rgba(18,16,12,0.18)]">

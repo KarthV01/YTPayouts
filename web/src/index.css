@@ -41,6 +41,17 @@ textarea {
   font-family: inherit;
 }
 
+button:not(:disabled),
+a[href],
+select,
+[role="button"] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 ::selection {
   background: #c5d2f3;
 }

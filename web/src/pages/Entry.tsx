@@ -138,7 +138,6 @@ function CreatorProfileForm({ onCreated }: { onCreated: () => void }) {
   const [displayName, setDisplayName] = useState("");
   const [handle, setHandle] = useState("");
   const [category, setCategory] = useState("");
-  const [averageViews, setAverageViews] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,7 +150,6 @@ function CreatorProfileForm({ onCreated }: { onCreated: () => void }) {
         displayName: displayName.trim(),
         handle: handle.trim(),
         category: category.trim(),
-        averageViews: averageViews.trim() ? Number(averageViews) : 0,
       });
       onCreated();
       navigate(`/creator/${creator.id}`);
@@ -175,14 +173,6 @@ function CreatorProfileForm({ onCreated }: { onCreated: () => void }) {
         </Field>
         <Field label="Category">
           <Input value={category} onChange={(event) => setCategory(event.target.value)} required />
-        </Field>
-        <Field label="Average views">
-          <Input
-            type="number"
-            min={0}
-            value={averageViews}
-            onChange={(event) => setAverageViews(event.target.value)}
-          />
         </Field>
         <Button type="submit" disabled={busy || !displayName.trim() || !handle.trim() || !category.trim()}>
           {busy ? "Creating..." : "Create creator"}

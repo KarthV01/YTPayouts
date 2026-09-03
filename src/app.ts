@@ -45,6 +45,11 @@ export async function buildApp(deps: AppDependencies) {
     });
   });
 
+  app.get("/", async (_request, reply) => {
+    const appUrl = process.env.APP_URL?.trim() || "http://localhost:5173";
+    return reply.redirect(appUrl);
+  });
+
   app.get("/health", async () => ({
     ok: true,
   }));

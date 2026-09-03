@@ -4,7 +4,7 @@ import { api } from "../../lib/api";
 import { formatUsdc, usdcToUnits } from "../../lib/money";
 import type { CreatorProfile } from "../../lib/types";
 import { useResource } from "../../lib/useResource";
-import { Banner, Button, Field, Input, PageHeader, Select, Textarea } from "../../ui/primitives";
+import { Banner, Button, Field, Input, PageHeader, RequiredMark, Select, Textarea } from "../../ui/primitives";
 
 type MilestoneRow = {
   views: string;
@@ -147,7 +147,10 @@ export function NewContractPage() {
       ) : null}
       <form className="space-y-6" onSubmit={onSubmit}>
         <section className="rounded-[8px] border-2 border-ink/20 bg-surface p-4">
-          <h2 className="text-sm font-medium text-ink">Creator account</h2>
+          <h2 className="text-sm font-medium text-ink">
+            Creator account
+            <RequiredMark />
+          </h2>
           <div className="mt-3 flex gap-2">
             <Input
               value={creatorQuery}
@@ -195,23 +198,23 @@ export function NewContractPage() {
           ) : null}
         </section>
 
-        <Field label="Title">
+        <Field label="Title" required>
           <Input value={title} onChange={(event) => setTitle(event.target.value)} required />
         </Field>
-        <Field label="Deliverable">
+        <Field label="Deliverable" required>
           <Textarea rows={4} value={deliverable} onChange={(event) => setDeliverable(event.target.value)} required />
         </Field>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Deadline">
+          <Field label="Deadline" required>
             <Input type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} required />
           </Field>
-          <Field label="Measurement window (days)">
+          <Field label="Measurement window (days)" required>
             <Input type="number" min={1} value={windowDays} onChange={(event) => setWindowDays(event.target.value)} required />
           </Field>
-          <Field label="Base payout (USDC)">
+          <Field label="Base payout (USDC)" required>
             <Input value={baseUsdc} onChange={(event) => setBaseUsdc(event.target.value)} required />
           </Field>
-          <Field label="Total cap (USDC)" hint="Must cover base plus bonuses">
+          <Field label="Total cap (USDC)" hint="Must cover base plus bonuses" required>
             <Input value={capUsdc} onChange={(event) => setCapUsdc(event.target.value)} required />
           </Field>
         </div>
